@@ -2,6 +2,8 @@
 
 > *“HisabMate hai, toh sab sorted hai.”*
 
+🌐 **Live Website:** **[https://codecrusaders-png.github.io/HisabMate/](https://codecrusaders-png.github.io/HisabMate/)**
+
 A simple, zero-friction expense ledger that turns casual post-dinner stories and trip notes into exact, paise-accurate settlements with greedy cash-flow optimization.
 
 Runs 100% locally in your browser with zero tracking, no accounts or signups, and full offline PWA support.
@@ -22,14 +24,20 @@ Runs 100% locally in your browser with zero tracking, no accounts or signups, an
 
 ## Files
 
-- `index.html` — The complete web app (UI, parser, and calculation engine)
+- `index.html` — The complete web app (UI, parser, calculation engine, SEO metadata)
 - `manifest.json` — PWA configuration for home screen installation
 - `sw.js` — Service worker for offline caching
 - `icon.svg`, `icon-192.png`, `icon-512.png` — App icons
+- `sitemap.xml` & `robots.txt` — Search engine indexing and crawling configs
+- `.nojekyll` — Bypasses Jekyll for static GitHub Pages delivery
 
 ---
 
 ## How to Run & Deploy
+
+### Live Deployment
+Access the app directly at:
+👉 **[https://codecrusaders-png.github.io/HisabMate/](https://codecrusaders-png.github.io/HisabMate/)**
 
 ### Run Locally
 Open `index.html` directly in any web browser, or serve it with:
@@ -38,13 +46,3 @@ npx serve .
 # or
 python -m http.server 8000
 ```
-
-### Deploy to Netlify (Recommended)
-1. Go to [app.netlify.com/drop](https://app.netlify.com/drop).
-2. Drag and drop this project folder.
-3. Your app is live instantly.
-
-### Deploy to GitHub Pages
-1. Push this folder to a GitHub repository.
-2. In repository **Settings** > **Pages**, choose the `main` branch `/ (root)`.
-3. Click **Save**.
