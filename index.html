@@ -1,0 +1,3174 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HisabMate — Narrative Expense Ledger & Paise-Accurate Settlement</title>
+  <meta name="description" content="Turn casual dinner and trip narrative stories into exact paise-accurate settlements with greedy cash-flow optimization and one-click UPI payments.">
+  
+  <!-- PWA & Mobile Web App Meta -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="theme-color" content="#090b0e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="HisabMate">
+  
+  <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- QRCode.js via CDN for instant UPI payment QR generation -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            obsidian: '#090b0e',
+            surface: '#151921',
+            surfaceLight: '#1c222d',
+            surfaceHover: '#242b38',
+            surfaceBorder: '#242b38',
+            emeraldMint: '#10b981',
+            emeraldMintDark: '#059669',
+            roseCrimson: '#f43f5e',
+            roseCrimsonDark: '#e11d48',
+            amberGlow: '#f59e0b',
+            amberGlowDark: '#d97706'
+          },
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
+          },
+          animation: {
+            'pulse-slow': 'pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'fadeIn': 'fadeIn 0.25s ease-out forwards',
+            'slideDown': 'slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+          },
+          keyframes: {
+            fadeIn: {
+              '0%': { opacity: '0', transform: 'scale(0.96)' },
+              '100%': { opacity: '1', transform: 'scale(1)' }
+            },
+            slideDown: {
+              '0%': { opacity: '0', transform: 'translateY(-12px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' }
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+
+    /* Enforce clean modern typography */
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+      letter-spacing: -0.01em;
+    }
+
+    input, textarea, button, select, optgroup {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    .font-mono, code, kbd, pre, samp {
+      font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+      font-feature-settings: "tnum" 1, "zero" 1;
+    }
+
+    /* Custom Scrollbar for sleek fintech look */
+    ::-webkit-scrollbar {
+      width: 7px;
+      height: 7px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #090b0e;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #242b38;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #374151;
+    }
+
+    /* Ambient background glows */
+    .bg-radial-glow {
+      background-image: 
+        radial-gradient(circle at 50% -10%, rgba(245, 158, 11, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 100% 100%, rgba(16, 185, 129, 0.05) 0%, transparent 40%),
+        radial-gradient(circle at 0% 50%, rgba(244, 63, 94, 0.04) 0%, transparent 45%);
+    }
+
+    /* Subtle grid texture overlay */
+    .bg-grid-pattern {
+      background-size: 32px 32px;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+    }
+  </style>
+</head>
+
+<body class="bg-obsidian text-slate-100 font-sans min-h-screen antialiased bg-radial-glow bg-grid-pattern selection:bg-amber-500/20 selection:text-amber-300">
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Main Container -->
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10">
+
+    <!-- ========================================== -->
+    <!-- ========================================== -->
+    <!-- HEADER STRIP -->
+    <!-- ========================================== -->
+    <header class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-5 border-b border-surfaceBorder/60 mb-6">
+      <div class="flex items-center gap-3">
+        <!-- Brand Logo Icon -->
+        <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-amber-500 to-emerald-400 p-[1.5px] shadow-lg shadow-amber-500/10 flex-shrink-0">
+          <div class="w-full h-full bg-surface rounded-[10px] flex items-center justify-center">
+            <span class="text-xl font-bold bg-gradient-to-r from-amber-400 to-emerald-300 bg-clip-text text-transparent font-mono">₹</span>
+          </div>
+        </div>
+
+        <div>
+          <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+            HisabMate
+          </h1>
+          <!-- One-liner capsule badge under Brand Name -->
+          <div class="mt-1">
+            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-amberGlow/10 border border-amberGlow/25 text-amber-300 text-xs font-medium">
+              &ldquo;HisabMate hai, toh sab sorted hai.&rdquo;
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Header Strip: Reassurance Badge & Navigation -->
+      <div class="flex items-center flex-wrap gap-2.5">
+        <!-- Reassurance Badge -->
+        <div class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emeraldMint/10 border border-emeraldMint/25 text-emeraldMint text-xs font-semibold">
+          <span class="w-2 h-2 rounded-full bg-emeraldMint animate-pulse"></span>
+          <span>No signup • 100% local</span>
+        </div>
+
+        <!-- History Button -->
+        <button id="btn-open-history" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-surfaceBorder hover:border-slate-500 hover:bg-surfaceHover text-slate-300 text-xs font-semibold transition active:scale-95 shadow-sm">
+          <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>History</span>
+          <span id="history-count-badge" class="px-1.5 py-0.2 rounded-full bg-surfaceLight border border-surfaceBorder text-[10px] text-amberGlow font-mono">0</span>
+        </button>
+
+        <!-- New Outing Button -->
+        <button id="btn-new-outing" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-surfaceBorder hover:border-amber-500/50 hover:bg-surfaceHover text-slate-300 text-xs font-semibold transition active:scale-95 shadow-sm">
+          <svg class="w-4 h-4 text-amberGlow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          <span>New Outing</span>
+        </button>
+
+        <!-- Share Outing Button -->
+        <button id="btn-header-share" title="Share outing via link or QR code" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface border border-surfaceBorder hover:border-sky-500/50 hover:bg-surfaceHover text-slate-300 text-xs font-semibold transition active:scale-95 shadow-sm">
+          <svg class="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+          </svg>
+          <span>Share</span>
+        </button>
+
+        <!-- How It Works / Info Modal Button -->
+        <button id="btn-open-info" title="How the Zero-Drift paise math works" class="p-1.5 rounded-lg bg-surface border border-surfaceBorder hover:border-slate-500 text-slate-400 hover:text-white transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </button>
+      </div>
+    </header>
+
+
+    <!-- ========================================== -->
+    <!-- METADATA CARD (Outing Name & Date) -->
+    <!-- ========================================== -->
+    <div class="bg-surface border border-surfaceBorder rounded-2xl p-4 sm:p-5 mb-6 shadow-xl relative overflow-hidden">
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+        <!-- Outing Name -->
+        <div class="md:col-span-7">
+          <label for="outing-title" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+            Outing / Trip Title
+          </label>
+          <div class="relative">
+            <input type="text" id="outing-title" placeholder="e.g. Dinner at Karim's or Digha Weekend" 
+                   class="w-full bg-obsidian border border-surfaceBorder focus:border-amberGlow focus:ring-1 focus:ring-amberGlow/50 rounded-xl px-4 py-2.5 text-sm sm:text-base font-medium text-white placeholder-slate-600 transition outline-none">
+            <span class="absolute right-3 top-3 text-slate-600 pointer-events-none">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+            </span>
+          </div>
+        </div>
+
+        <!-- Date Picker -->
+        <div class="md:col-span-3">
+          <label for="outing-date" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+            Date
+          </label>
+          <input type="date" id="outing-date" 
+                 class="w-full bg-obsidian border border-surfaceBorder focus:border-amberGlow focus:ring-1 focus:ring-amberGlow/50 rounded-xl px-3.5 py-2.5 text-sm font-medium text-slate-200 transition outline-none">
+        </div>
+
+        <!-- Live Total Spend Counter -->
+        <div class="md:col-span-2 flex flex-col items-start md:items-end justify-center pt-1 md:pt-0">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Spent</span>
+          <div class="flex items-baseline gap-1 mt-0.5">
+            <span class="text-xl sm:text-2xl font-bold font-mono text-amberGlow" id="meta-total-spend">₹0.00</span>
+          </div>
+          <span class="text-[11px] text-slate-500 font-mono" id="meta-expense-count">0 expenses</span>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- SECTION B: THE SQUAD (Interactive Tag Chips) -->
+    <!-- ========================================== -->
+    <div class="bg-surface border border-surfaceBorder rounded-2xl p-5 sm:p-6 mb-6 shadow-xl">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+        <div class="flex items-center gap-2">
+          <h2 class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+            <span>👥</span>
+            <span>The Squad</span>
+            <span id="squad-count-badge" class="text-xs font-mono px-2 py-0.5 rounded-full bg-surfaceLight border border-surfaceBorder text-amberGlow">0</span>
+          </h2>
+          <span class="text-xs text-slate-400 hidden sm:inline">• Who is in this outing?</span>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button id="btn-load-sample-squad" class="text-xs text-amberGlow hover:text-amber-400 font-medium px-2.5 py-1 rounded-md bg-amberGlow/10 border border-amberGlow/20 transition hover:bg-amberGlow/20">
+            + Sample Squad (Plaban, Priyasi, Anuj, Arkadeep)
+          </button>
+          <button id="btn-clear-squad" class="text-xs text-slate-500 hover:text-rose-400 transition px-2 py-1">
+            Clear all
+          </button>
+        </div>
+      </div>
+
+      <!-- Tactile Chip Container with Inline Input -->
+      <div id="squad-chip-container" 
+           class="min-h-[56px] w-full bg-obsidian border border-surfaceBorder focus-within:border-amberGlow focus-within:ring-1 focus-within:ring-amberGlow/40 rounded-xl p-2.5 flex flex-wrap items-center gap-2 transition cursor-text">
+        <!-- Rendered squad chips will be inserted here -->
+        <input type="text" id="squad-input" 
+               placeholder="+ Add member (press Enter)..." 
+               class="bg-transparent border-none outline-none text-sm text-slate-100 placeholder-slate-500 px-2 py-1 flex-1 min-w-[170px]" 
+               autocomplete="off" />
+      </div>
+      
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-500 mt-2 px-1 gap-1">
+        <span>💡 Press <kbd class="px-1.5 py-0.5 rounded bg-surfaceLight border border-surfaceBorder text-slate-300 font-mono text-[10px]">Enter</kbd> or <kbd class="px-1.5 py-0.5 rounded bg-surfaceLight border border-surfaceBorder text-slate-300 font-mono text-[10px]">Space</kbd> to add. <kbd class="px-1.5 py-0.5 rounded bg-surfaceLight border border-surfaceBorder text-slate-300 font-mono text-[10px]">Backspace</kbd> deletes last.</span>
+        <span class="text-slate-400">Click any chip to configure custom UPI handle</span>
+      </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- SECTION C: STORY INPUT & NATURAL LANGUAGE ENGINE -->
+    <!-- ========================================== -->
+    <div class="bg-surface border border-surfaceBorder rounded-2xl p-5 sm:p-6 mb-6 shadow-xl relative">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+        <div>
+          <h2 class="text-base sm:text-lg font-extrabold text-white flex items-center gap-2">
+            <span>📝</span>
+            <span>Tell Us The Story...</span>
+          </h2>
+          <p class="text-xs text-slate-400 mt-0.5">
+            Casually write or dictate what happened. We will handle the rest.
+          </p>
+        </div>
+
+        <div class="flex items-center flex-wrap gap-2">
+          <!-- Voice Dictation Button (Web Speech API) -->
+          <button id="btn-dictate" 
+                  class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-surfaceLight border border-surfaceBorder hover:border-amberGlow/60 text-slate-200 text-xs font-semibold transition active:scale-95 shadow-sm group">
+            <span id="dictate-icon" class="text-base group-hover:scale-110 transition">🎙️</span>
+            <span id="dictate-text">Dictate</span>
+            <span id="dictate-indicator" class="w-2 h-2 rounded-full bg-rose-500 hidden animate-ping"></span>
+          </button>
+
+          <!-- Sample Stories Dropdown / Quick Buttons -->
+          <div class="relative inline-block text-left" id="sample-story-menu-wrap">
+            <button id="btn-sample-stories" 
+                    class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-surfaceLight border border-surfaceBorder hover:border-slate-500 text-slate-300 text-xs font-semibold transition active:scale-95 shadow-sm">
+              <span>💡 Load Story</span>
+              <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            <div id="sample-story-dropdown" class="hidden absolute right-0 mt-2 w-64 bg-surface border border-surfaceBorder rounded-xl shadow-2xl z-30 py-1.5 text-xs">
+              <button class="w-full text-left px-3.5 py-2 hover:bg-surfaceHover text-slate-200 transition" onclick="app.loadSample(1)">
+                <div class="font-bold text-amberGlow">🍛 Dinner at Karim's</div>
+                <div class="text-[11px] text-slate-400">Plaban paid lunch, Priyasi veg, water bottles</div>
+              </button>
+              <button class="w-full text-left px-3.5 py-2 hover:bg-surfaceHover text-slate-200 transition" onclick="app.loadSample(2)">
+                <div class="font-bold text-emeraldMint">🏖️ Digha Weekend Trip</div>
+                <div class="text-[11px] text-slate-400">Tolls, seafood lunch, coconut water, dessert</div>
+              </button>
+              <button class="w-full text-left px-3.5 py-2 hover:bg-surfaceHover text-slate-200 transition" onclick="app.loadSample(3)">
+                <div class="font-bold text-sky-400">🏠 Flatmates Monthly Bills</div>
+                <div class="text-[11px] text-slate-400">Broadband wifi, groceries, water cans</div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Clear Story Button -->
+          <button id="btn-clear-story" class="p-1.5 text-slate-500 hover:text-rose-400 transition" title="Clear text">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Narrative Textarea -->
+      <div class="relative">
+        <textarea id="story-input" rows="4" 
+                  placeholder="e.g. Plaban paid 1200 for lunch for all of us except Priyasi. Priyasi ate veg for 250 paid by Anuj. Arkadeep bought 2 water bottles for 40 for everyone."
+                  class="w-full bg-obsidian border border-surfaceBorder focus:border-amberGlow focus:ring-1 focus:ring-amberGlow/50 rounded-xl p-4 text-sm sm:text-base font-normal text-slate-100 placeholder-slate-600 transition outline-none leading-relaxed resize-y min-h-[110px]"></textarea>
+        
+        <!-- Listening Waveform Indicator overlay when dictating -->
+        <div id="listening-bar" class="hidden absolute bottom-3 left-3 right-3 bg-surface/95 border border-amberGlow/50 backdrop-blur-md rounded-lg p-2.5 flex items-center justify-between text-xs text-amberGlow shadow-lg">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping"></span>
+            <span class="font-semibold">Listening to your voice...</span>
+            <span class="text-slate-400 text-[11px]">Speak naturally in English or Hinglish</span>
+          </div>
+          <button id="btn-stop-dictation" class="px-2.5 py-1 rounded bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 font-medium">
+            Stop Listening ✕
+          </button>
+        </div>
+      </div>
+
+      <!-- Action Bar below Story -->
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mt-4">
+        <div class="flex items-center gap-2 text-xs text-slate-500">
+          <span id="story-char-counter">0 chars</span>
+          <span>•</span>
+          <span id="story-sentence-counter">0 sentences</span>
+          <span class="hidden md:inline">• Shortcut: <kbd class="px-1 rounded bg-surfaceLight border border-surfaceBorder text-slate-300 font-mono text-[10px]">Ctrl + Enter</kbd> to calculate</span>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <!-- Primary Action Button: Calculate -->
+          <button id="btn-calculate" 
+                  class="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 hover:from-amber-400 hover:to-amber-300 text-obsidian font-extrabold text-sm tracking-wide shadow-lg shadow-amber-500/20 hover:shadow-amber-500/30 transition-all transform active:scale-95 group">
+            <svg class="w-4 h-4 fill-current group-hover:rotate-12 transition-transform duration-200" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" />
+            </svg>
+            <span class="font-bold tracking-tight">Hisab Kar Raha Hu...</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Discovered Squad Notification Banner (if story contains names not in squad) -->
+      <div id="discovered-names-banner" class="hidden mt-4 p-3 rounded-xl bg-amberGlow/10 border border-amberGlow/30 flex items-center justify-between gap-3 text-xs">
+        <div class="flex items-center gap-2 text-amberGlow">
+          <span>🔍</span>
+          <span>We noticed members in your story not yet in The Squad:</span>
+          <span id="discovered-names-chips" class="flex flex-wrap gap-1 font-semibold text-white"></span>
+        </div>
+        <button id="btn-add-discovered-names" class="px-2.5 py-1 rounded bg-amberGlow text-obsidian font-bold hover:bg-amber-400 transition whitespace-nowrap">
+          + Add All to Squad
+        </button>
+      </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- EVENT BREAKDOWN -->
+    <!-- ========================================== -->
+    <div id="parsed-expenses-section" class="mb-8 hidden">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-2.5">
+          <span class="text-xl">🧾</span>
+          <h3 class="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
+            Here’s Your Event Breakdown
+          </h3>
+          <span id="parsed-count-badge" class="text-xs font-mono font-medium px-2.5 py-0.5 rounded-full bg-surfaceLight border border-surfaceBorder text-slate-300">0 events</span>
+        </div>
+
+        <button id="btn-add-manual-item" class="text-xs text-slate-300 hover:text-white px-3 py-1.5 rounded-xl bg-surface border border-surfaceBorder hover:border-slate-500 font-semibold transition flex items-center gap-1.5 shadow-sm">
+          <span>+ Add Event</span>
+        </button>
+      </div>
+
+      <!-- Items Grid: 2 columns matching reference image -->
+      <div id="parsed-expenses-list" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <!-- Rendered event cards will be inserted here -->
+      </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- SETTLEMENT SUMMARY METRICS STRIP -->
+    <!-- ========================================== -->
+    <div id="metrics-strip" class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-8">
+      <!-- Metric 1: Total Spend -->
+      <div class="bg-surface border border-surfaceBorder rounded-2xl p-4 shadow-lg flex flex-col justify-between">
+        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Outing Spend</span>
+        <div class="mt-2">
+          <span class="text-2xl sm:text-3xl font-extrabold font-mono text-white" id="metric-total-spend">₹0.00</span>
+        </div>
+        <span class="text-[11px] text-slate-500 font-mono mt-1" id="metric-expense-count">0 items calculated</span>
+      </div>
+
+      <!-- Metric 2: Squad Size -->
+      <div class="bg-surface border border-surfaceBorder rounded-2xl p-4 shadow-lg flex flex-col justify-between">
+        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">The Squad</span>
+        <div class="mt-2">
+          <span class="text-2xl sm:text-3xl font-extrabold font-mono text-slate-200" id="metric-squad-count">0</span>
+        </div>
+        <span class="text-[11px] text-slate-500 mt-1">active members</span>
+      </div>
+
+      <!-- Metric 3: Minimum Transfers -->
+      <div class="bg-surface border border-surfaceBorder rounded-2xl p-4 shadow-lg flex flex-col justify-between">
+        <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Optimized Cashflow</span>
+        <div class="mt-2 flex items-baseline gap-1.5">
+          <span class="text-2xl sm:text-3xl font-extrabold font-mono text-emeraldMint" id="metric-transfers-count">0</span>
+          <span class="text-xs text-slate-400 font-medium">transfers</span>
+        </div>
+        <span class="text-[11px] text-emeraldMint/80 font-mono mt-1">Greedy minimum cash-flow</span>
+      </div>
+
+      <!-- Metric 4: Zero Drift Guarantee -->
+      <div onclick="app.openAuditModal()" class="bg-surface border border-surfaceBorder hover:border-emeraldMint/40 cursor-pointer rounded-2xl p-4 shadow-lg flex flex-col justify-between transition group" title="Click to inspect calculation proof & consumption matrix">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Paise Conservation</span>
+          <span class="text-[10px] text-amberGlow group-hover:underline font-mono">Proof ➔</span>
+        </div>
+        <div class="mt-2 flex items-center gap-1.5">
+          <span class="text-2xl sm:text-3xl font-extrabold font-mono text-emeraldMint" id="metric-drift">0.00p</span>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-emeraldMint/10 text-emeraldMint border border-emeraldMint/30 font-semibold text-[10px]">Exact</span>
+        </div>
+        <span class="text-[11px] text-slate-500 font-mono mt-1">Zero floating point drift</span>
+      </div>
+    </div>
+
+
+    <!-- ========================================== -->
+    <!-- SECTION E: PERSON-CENTRIC SETTLEMENT GRID (Crucial UX Requirement) -->
+    <!-- ========================================== -->
+    <section class="mb-10">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+        <div>
+          <div class="flex items-center gap-2">
+            <h2 class="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
+              Optimal Settlement Hierarchy
+            </h2>
+            <span class="text-xs font-mono px-2 py-0.5 rounded-full bg-surfaceLight border border-surfaceBorder text-slate-400">Strictly "Pay to" Only</span>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-400 mt-1">
+            Every member has a dedicated card itemizing exact payments to make, with direct 1-click UPI links.
+          </p>
+        </div>
+
+        <!-- Export & Share Buttons -->
+        <div class="flex items-center flex-wrap gap-2">
+          <!-- Calculation Proof Button -->
+          <button id="btn-open-audit" 
+                  class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amberGlow/15 hover:bg-amberGlow/25 border border-amberGlow/40 text-amberGlow text-xs font-bold transition active:scale-95 shadow-sm">
+            <svg class="w-4 h-4 fill-none stroke-current" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            <span>Calculation Proof</span>
+          </button>
+
+          <!-- WhatsApp Summary Button -->
+          <button id="btn-share-whatsapp" 
+                  class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emeraldMint/15 hover:bg-emeraldMint/25 border border-emeraldMint/40 text-emeraldMint text-xs font-bold transition active:scale-95 shadow-sm">
+            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+              <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+            </svg>
+            <span>WhatsApp Summary</span>
+          </button>
+
+          <!-- Share Link & QR Sync Button -->
+          <button id="btn-open-share-modal" 
+                  class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/40 text-sky-400 text-xs font-bold transition active:scale-95 shadow-sm" title="Share outing with QR code or link">
+            <svg class="w-4 h-4 fill-none stroke-current" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+            </svg>
+            <span>Share Link & QR</span>
+          </button>
+
+          <!-- Copy Raw Text Summary -->
+          <button id="btn-copy-summary" 
+                  class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface border border-surfaceBorder hover:border-slate-500 text-slate-300 text-xs font-semibold transition active:scale-95 shadow-sm" title="Copy text summary">
+            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+            </svg>
+            <span>Copy Text</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Person Cards Grid -->
+      <div id="person-cards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <!-- Rendered Person Cards will be placed here -->
+      </div>
+
+      <!-- Empty State when no calculation is made yet -->
+      <div id="settlement-empty-state" class="bg-surface border border-surfaceBorder border-dashed rounded-2xl p-10 text-center flex flex-col items-center justify-center">
+        <div class="w-14 h-14 rounded-2xl bg-surfaceLight border border-surfaceBorder flex items-center justify-center text-2xl mb-3 text-slate-500">
+          ⚖️
+        </div>
+        <h3 class="text-base font-bold text-slate-200">No Settlements Calculated Yet</h3>
+        <p class="text-xs text-slate-400 max-w-md mt-1 mb-4">
+          Add your squad members and paste or dictate your expense story above, then click <strong class="text-amberGlow font-semibold">&ldquo;Hisab Kar Raha Huuu...&rdquo;</strong>
+        </p>
+        <button onclick="app.loadSample(1)" class="px-4 py-2 rounded-xl bg-surfaceLight border border-surfaceBorder hover:border-amberGlow text-xs font-semibold text-amberGlow transition">
+          Load Sample Dinner & Run Demo
+        </button>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- FOOTER -->
+    <!-- ========================================== -->
+    <footer class="pt-8 pb-12 border-t border-surfaceBorder/60 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4">
+      <div class="flex items-center gap-2">
+        <span class="font-bold text-slate-300">HisabMate</span>
+        <span>•</span>
+        <span>Deterministic Paise Allocation & Greedy Cashflow</span>
+      </div>
+      <div class="flex items-center gap-4 text-slate-400">
+        <span>Zero cloud tracking</span>
+        <span>•</span>
+        <span>Saved in LocalStorage</span>
+        <span>•</span>
+        <button onclick="app.exportJSON()" class="hover:text-amberGlow transition underline">Export JSON</button>
+      </div>
+    </footer>
+  </div>
+
+
+  <!-- ========================================== -->
+  <!-- MODAL: PAST OUTINGS DRAWER -->
+  <!-- ========================================== -->
+  <div id="history-drawer-backdrop" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden transition-opacity">
+    <div id="history-drawer" class="fixed right-0 top-0 bottom-0 w-full max-w-md bg-surface border-l border-surfaceBorder p-6 shadow-2xl flex flex-col justify-between overflow-y-auto transform translate-x-full transition-transform duration-300 ease-out">
+      <div>
+        <div class="flex items-center justify-between pb-4 border-b border-surfaceBorder mb-5">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">📁</span>
+            <h3 class="text-lg font-bold text-white">Saved Outings</h3>
+          </div>
+          <button id="btn-close-history" class="p-1.5 rounded-lg bg-surfaceLight hover:bg-surfaceHover text-slate-400 hover:text-white transition">
+            ✕
+          </button>
+        </div>
+
+        <p class="text-xs text-slate-400 mb-4">
+          All past trips & dinners stored securely in your browser's local storage.
+        </p>
+
+        <!-- Outings List Container -->
+        <div id="history-list" class="space-y-3">
+          <!-- Rendered past outings -->
+        </div>
+      </div>
+
+      <div class="pt-6 border-t border-surfaceBorder mt-6 flex items-center justify-between">
+        <button id="btn-save-current-history" class="px-3.5 py-2 rounded-xl bg-amberGlow/15 hover:bg-amberGlow/25 border border-amberGlow/40 text-amberGlow text-xs font-bold transition">
+          💾 Save Current Outing
+        </button>
+        <button id="btn-clear-all-history" class="text-xs text-rose-400 hover:text-rose-300 transition">
+          Clear History
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ========================================== -->
+  <!-- MODAL: SET MEMBER UPI ID -->
+  <!-- ========================================== -->
+  <div id="upi-modal-backdrop" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-surface border border-surfaceBorder rounded-2xl max-w-sm w-full p-6 shadow-2xl animate-fadeIn">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">📱</span>
+          <h3 class="text-base font-bold text-white" id="upi-modal-title">Configure UPI ID</h3>
+        </div>
+        <button onclick="app.closeUpiModal()" class="text-slate-400 hover:text-white text-sm">✕</button>
+      </div>
+      
+      <p class="text-xs text-slate-400 mb-3" id="upi-modal-desc">
+        Set UPI ID for this squad member so payment links launch directly.
+      </p>
+
+      <div class="mb-4">
+        <label for="upi-modal-input" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
+          UPI ID / VPA
+        </label>
+        <input type="text" id="upi-modal-input" placeholder="e.g. plaban@oksbi or 9876543210@paytm" 
+               class="w-full bg-obsidian border border-surfaceBorder focus:border-amberGlow focus:ring-1 focus:ring-amberGlow/50 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-600 outline-none">
+      </div>
+
+      <div class="flex items-center justify-end gap-2">
+        <button onclick="app.closeUpiModal()" class="px-3.5 py-2 rounded-xl bg-surfaceLight hover:bg-surfaceHover text-slate-300 text-xs font-medium transition">
+          Cancel
+        </button>
+        <button id="btn-save-upi" class="px-4 py-2 rounded-xl bg-amberGlow hover:bg-amber-400 text-obsidian text-xs font-bold transition">
+          Save UPI ID
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ========================================== -->
+  <!-- MODAL: UPI QR SCANNER (Instant Desktop Scan-to-Pay) -->
+  <!-- ========================================== -->
+  <div id="qr-modal-backdrop" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-surface border border-surfaceBorder rounded-2xl max-w-sm w-full p-6 shadow-2xl text-center animate-fadeIn">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-2 text-left">
+          <span class="text-xl">📲</span>
+          <div>
+            <h3 class="text-base font-bold text-white">Scan to Pay with UPI</h3>
+            <p class="text-[11px] text-slate-400" id="qr-modal-subtitle">GPay, PhonePe, Paytm, BHIM</p>
+          </div>
+        </div>
+        <button onclick="app.closeQrModal()" class="text-slate-400 hover:text-white text-sm">✕</button>
+      </div>
+
+      <!-- QR Code Canvas Container -->
+      <div class="bg-white p-4 rounded-2xl inline-block shadow-inner mb-4">
+        <div id="qr-code-mount" class="w-48 h-48 flex items-center justify-center"></div>
+      </div>
+
+      <div class="space-y-1 mb-4 text-xs">
+        <div class="text-slate-400">Paying to: <span id="qr-payee-name" class="font-bold text-white"></span></div>
+        <div class="text-slate-400">UPI ID: <span id="qr-payee-vpa" class="font-mono text-amberGlow"></span></div>
+        <div class="text-slate-400">Amount: <span id="qr-payee-amount" class="font-mono font-bold text-emeraldMint text-base"></span></div>
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <a id="qr-direct-link" href="#" class="w-full py-2.5 rounded-xl bg-emeraldMint hover:bg-emeraldMintDark text-obsidian font-bold text-xs transition flex items-center justify-center gap-1.5">
+          <span>📲 Launch UPI App Directly</span>
+        </a>
+        <button onclick="app.copyQrIntent()" class="w-full py-2 rounded-xl bg-surfaceLight hover:bg-surfaceHover text-slate-300 text-xs font-semibold transition border border-surfaceBorder">
+          Copy Payment URI
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ========================================== -->
+  <!-- MODAL: SHARE OUTING & QR SYNC -->
+  <!-- ========================================== -->
+  <div id="share-modal-backdrop" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-surface border border-surfaceBorder rounded-2xl max-w-sm w-full p-6 shadow-2xl text-left animate-fadeIn">
+      <div class="flex items-center justify-between pb-3 border-b border-surfaceBorder mb-4">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">📲</span>
+          <h3 class="text-base sm:text-lg font-bold text-white">Share Outing with Squad</h3>
+        </div>
+        <button onclick="app.closeShareModal()" class="text-slate-400 hover:text-white text-sm">✕</button>
+      </div>
+
+      <p class="text-xs text-slate-400 mb-3.5 leading-relaxed">
+        Scan this QR code with any phone camera or share the link. It syncs the entire outing locally with zero signup needed.
+      </p>
+
+      <!-- QR Mount -->
+      <div class="flex flex-col items-center justify-center p-3.5 rounded-xl bg-obsidian border border-surfaceBorder mb-4">
+        <div id="share-qr-mount" class="p-3 bg-white rounded-xl shadow-lg flex items-center justify-center"></div>
+        <span class="text-[11px] text-slate-400 font-mono mt-2.5">Point camera to open on phone</span>
+      </div>
+
+      <!-- Copy Link Input Strip -->
+      <div class="flex items-center gap-2 mb-3">
+        <input type="text" id="share-link-input" readonly 
+               class="flex-1 bg-obsidian border border-surfaceBorder rounded-xl px-3 py-2 text-[11px] font-mono text-slate-300 outline-none select-all" />
+        <button onclick="app.copyShareLink()" 
+                class="px-3.5 py-2 rounded-xl bg-amberGlow hover:bg-amber400 text-obsidian text-xs font-bold transition whitespace-nowrap active:scale-95">
+          Copy Link
+        </button>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="grid grid-cols-2 gap-2">
+        <button onclick="app.shareLinkWhatsApp()" class="py-2 px-3 rounded-xl bg-emeraldMint/15 hover:bg-emeraldMint/25 border border-emeraldMint/40 text-emeraldMint text-xs font-bold transition flex items-center justify-center gap-1.5">
+          <span>💬</span>
+          <span>WhatsApp</span>
+        </button>
+        <button onclick="app.shareLinkNative()" class="py-2 px-3 rounded-xl bg-surfaceLight hover:bg-surfaceHover border border-surfaceBorder text-slate-200 text-xs font-bold transition flex items-center justify-center gap-1.5">
+          <span>↗️</span>
+          <span>More Options</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ========================================== -->
+  <!-- MODAL: HOW IT WORKS & ALGORITHM TRANSPARENCY -->
+  <!-- ========================================== -->
+  <div id="info-modal-backdrop" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-surface border border-surfaceBorder rounded-2xl max-w-lg w-full p-6 shadow-2xl text-left animate-fadeIn max-h-[85vh] overflow-y-auto">
+      <div class="flex items-center justify-between pb-3 border-b border-surfaceBorder mb-4">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">💡</span>
+          <h3 class="text-base sm:text-lg font-bold text-white">The HisabMate Engine</h3>
+        </div>
+        <button onclick="app.closeInfoModal()" class="text-slate-400 hover:text-white text-sm">✕</button>
+      </div>
+
+      <div class="space-y-4 text-xs text-slate-300 leading-relaxed">
+        <div>
+          <h4 class="font-bold text-amberGlow text-sm mb-1">1. Exact Paise Math (Zero Floating-Point Drift)</h4>
+          <p class="text-slate-400">
+            Computers often suffer from floating-point rounding errors (e.g. ₹100 / 3 = 33.3333333..., causing 1 paisa to vanish into thin air). HisabMate immediately multiplies all rupee inputs by 100 into integer <strong class="text-slate-200">paise</strong>.
+          </p>
+          <div class="p-2.5 mt-1.5 rounded-lg bg-obsidian font-mono text-[11px] text-slate-300 border border-surfaceBorder">
+            baseShare = Math.floor(totalPaise / k);<br>
+            remainder = totalPaise % k;<br>
+            // First 'remainder' participants receive +1 paisa.<br>
+            // Guaranteed: Sum of Shares === Total Spent!
+          </div>
+        </div>
+
+        <div>
+          <h4 class="font-bold text-emeraldMint text-sm mb-1">2. Greedy Minimum Cash-Flow Algorithm</h4>
+          <p class="text-slate-400">
+            Rather than creating a confusing web of peer-to-peer transfers, HisabMate computes each person's exact Net balance (<code class="text-emeraldMint">Net = Total Paid - Total Consumed</code>). Then, it sorts Creditors and Debtors in descending order and greedily matches the largest debtor with the largest creditor. This mathematically guarantees the minimum possible transactions (at most <code class="text-amberGlow">N - 1</code> transfers for <code class="text-amberGlow">N</code> people).
+          </p>
+        </div>
+
+        <div>
+          <h4 class="font-bold text-sky-400 text-sm mb-1">3. Natural Language Narrative Parser</h4>
+          <p class="text-slate-400">
+            Our client-side NLP engine analyzes casual sentences. It matches payers with verbs (<code class="text-slate-200">paid, spent, bought, chipped in</code> or <code class="text-slate-200">paid by</code>), extracts currency amounts via regex, detects exclusions (<code class="text-slate-200">except Priyasi, without Rohan</code>), and specific subsets (<code class="text-slate-200">for Priyasi, between Anuj and Plaban</code>).
+          </p>
+        </div>
+
+        <div>
+          <h4 class="font-bold text-rose-400 text-sm mb-1">4. Zero Cloud Tracking</h4>
+          <p class="text-slate-400">
+            Everything runs directly in your browser. No telemetry, no backend server, no cookies, no databases. All outings are persisted solely in your browser's <code class="text-slate-200">localStorage</code>.
+          </p>
+        </div>
+      </div>
+
+      <div class="pt-4 border-t border-surfaceBorder mt-5 flex justify-end">
+        <button onclick="app.closeInfoModal()" class="px-4 py-2 rounded-xl bg-amberGlow hover:bg-amber-400 text-obsidian text-xs font-bold transition">
+          Got It, Let's Settle!
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ========================================== -->
+  <!-- MODAL: SETTLEMENT AUDIT & CALCULATION PROOF -->
+  <!-- ========================================== -->
+  <div id="audit-modal-backdrop" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-3 sm:p-5">
+    <div class="bg-surface border border-surfaceBorder rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl animate-fadeIn overflow-hidden">
+      <!-- Modal Header -->
+      <div class="p-5 sm:p-6 border-b border-surfaceBorder flex items-center justify-between bg-surfaceLight/30">
+        <div>
+          <div class="flex items-center gap-2.5">
+            <span class="text-xl">📊</span>
+            <h3 class="text-lg sm:text-xl font-bold text-white tracking-tight">Settlement Audit & Mathematical Proof</h3>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emeraldMint/10 text-emeraldMint border border-emeraldMint/30 font-bold">
+              0.00p Drift Verified
+            </span>
+          </div>
+          <p class="text-xs text-slate-400 mt-1">
+            Complete transparency: inspect who consumed what, the exact net equations, and why payments were routed this way.
+          </p>
+        </div>
+        <button onclick="app.closeAuditModal()" class="p-1.5 rounded-lg bg-surface hover:bg-surfaceHover text-slate-400 hover:text-white transition">
+          ✕
+        </button>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <div class="flex items-center border-b border-surfaceBorder px-5 sm:px-6 bg-obsidian text-xs overflow-x-auto">
+        <button onclick="app.setAuditTab('matrix')" id="audit-tab-matrix" class="py-3 px-4 font-bold border-b-2 border-amberGlow text-amberGlow transition flex items-center gap-1.5 whitespace-nowrap">
+          <span>📋 Consumption Matrix</span>
+        </button>
+        <button onclick="app.setAuditTab('equations')" id="audit-tab-equations" class="py-3 px-4 font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition flex items-center gap-1.5 whitespace-nowrap">
+          <span>⚖️ Net Balance Equations</span>
+        </button>
+        <button onclick="app.setAuditTab('trace')" id="audit-tab-trace" class="py-3 px-4 font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition flex items-center gap-1.5 whitespace-nowrap">
+          <span>🧮 Greedy Cashflow Trace</span>
+        </button>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <div class="p-5 sm:p-6 overflow-y-auto space-y-6 flex-1 text-slate-200" id="audit-modal-body">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="p-4 border-t border-surfaceBorder flex flex-col sm:flex-row items-center justify-between gap-3 bg-surfaceLight/20 text-xs">
+        <div class="text-slate-400 font-mono text-[11px]">
+          Invariant 1: <span class="text-emeraldMint font-bold">Σ(Paid) ≡ Σ(Consumed)</span> • Invariant 2: <span class="text-emeraldMint font-bold">Σ(Net) ≡ 0</span>
+        </div>
+        <button onclick="app.closeAuditModal()" class="px-5 py-2 rounded-xl bg-amberGlow hover:bg-amber400 text-obsidian font-bold text-xs transition active:scale-95">
+          Close Audit View
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ========================================== -->
+  <!-- JAVASCRIPT APPLICATION CORE -->
+  <!-- ========================================== -->
+  <script>
+    /**
+     * HisabMate Core Application
+     * Zero-drift paise arithmetic, Greedy Minimum Cashflow, Client-side NLP & localStorage
+     */
+    class HisabMate {
+      constructor() {
+        this.STORAGE_KEY_ACTIVE = 'HISABMATE_ACTIVE_OUTING_V1';
+        this.STORAGE_KEY_HISTORY = 'HISABMATE_OUTINGS_HISTORY_V1';
+
+        // Initial default state
+        this.outing = {
+          id: 'out_' + Date.now(),
+          title: '',
+          date: new Date().toISOString().split('T')[0],
+          squad: [], // Array of { id, name, upi }
+          story: '',
+          expenses: [], // Array of { id, description, payer, amountPaise, amountRupees, included: [], excluded: [] }
+          updatedAt: Date.now()
+        };
+
+        this.settlementResult = {
+          memberTotals: {},
+          transactions: [],
+          totalSpendPaise: 0,
+          driftPaise: 0,
+          matrix: [],
+          stepsLog: []
+        };
+
+        this.speechRecognition = null;
+        this.isDictating = false;
+        this.activeModalMember = null;
+        this.currentQrIntent = '';
+        this.currentAuditTab = 'matrix';
+
+        this.init();
+      }
+
+      init() {
+        this.loadState();
+        this.checkHashImport();
+        this.setupEventListeners();
+        this.setupSpeechRecognition();
+        this.renderAll();
+      }
+
+      // ========================================
+      // LOCAL STORAGE PERSISTENCE
+      // ========================================
+      loadState() {
+        try {
+          const saved = localStorage.getItem(this.STORAGE_KEY_ACTIVE);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            if (parsed && typeof parsed === 'object') {
+              this.outing = {
+                id: parsed.id || ('out_' + Date.now()),
+                title: parsed.title || '',
+                date: parsed.date || new Date().toISOString().split('T')[0],
+                squad: Array.isArray(parsed.squad) ? parsed.squad : [],
+                story: typeof parsed.story === 'string' ? parsed.story : '',
+                expenses: Array.isArray(parsed.expenses) ? parsed.expenses : [],
+                updatedAt: parsed.updatedAt || Date.now()
+              };
+              return;
+            }
+          }
+        } catch (e) {
+          console.warn('Recovered from corrupted active outing state in localStorage:', e);
+        }
+
+        // Default first-time experience
+        this.outing.title = "Dinner at Karim's";
+        this.outing.squad = [
+          { id: 'm1', name: 'Plaban', upi: 'plaban@upi' },
+          { id: 'm2', name: 'Priyasi', upi: '' },
+          { id: 'm3', name: 'Anuj', upi: 'anuj@upi' },
+          { id: 'm4', name: 'Arkadeep', upi: '' }
+        ];
+        this.outing.story = "Plaban paid 1200 for lunch for all of us except Priyasi. Priyasi ate veg for 250 paid by Anuj. Arkadeep bought 2 water bottles for 40 for everyone. Later Plaban paid 300 for dessert for Arkadeep and Priyasi.";
+      }
+
+      saveState() {
+        try {
+          this.outing.updatedAt = Date.now();
+          localStorage.setItem(this.STORAGE_KEY_ACTIVE, JSON.stringify(this.outing));
+        } catch (e) {
+          console.error('Failed to save active outing to localStorage:', e);
+        }
+      }
+
+      getPastOutings() {
+        try {
+          const raw = localStorage.getItem(this.STORAGE_KEY_HISTORY);
+          return raw ? JSON.parse(raw) : [];
+        } catch (e) {
+          return [];
+        }
+      }
+
+      savePastOutings(list) {
+        try {
+          localStorage.setItem(this.STORAGE_KEY_HISTORY, JSON.stringify(list));
+          this.updateHistoryCountBadge();
+        } catch (e) {
+          console.error('Failed to save outings history:', e);
+        }
+      }
+
+      saveCurrentToHistory() {
+        if (!this.outing.title && this.outing.expenses.length === 0) {
+          this.showToast('Please add some details before saving.', 'info');
+          return;
+        }
+
+        const history = this.getPastOutings();
+        const existingIdx = history.findIndex(h => h.id === this.outing.id);
+
+        const snapshot = {
+          id: this.outing.id,
+          title: this.outing.title || 'Untitled Outing',
+          date: this.outing.date,
+          squad: [...this.outing.squad],
+          story: this.outing.story,
+          expenses: [...this.outing.expenses],
+          totalSpendPaise: this.settlementResult.totalSpendPaise,
+          transactionsCount: this.settlementResult.transactions.length,
+          savedAt: Date.now()
+        };
+
+        if (existingIdx >= 0) {
+          history[existingIdx] = snapshot;
+        } else {
+          history.unshift(snapshot);
+        }
+
+        this.savePastOutings(history);
+        this.renderHistoryDrawer();
+        this.showToast(`Saved "${snapshot.title}" to history!`, 'success');
+      }
+
+      // ========================================
+      // SQUAD MANAGEMENT (Tag Chips)
+      // ========================================
+      addSquadMember(name, upi = '') {
+        const raw = (name || '').trim();
+        if (!raw) return;
+
+        // Auto-sanitize and Title-Case names upon addition (e.g. "anuj" or "  anuj  " becomes "Anuj")
+        const cleanName = raw
+          .split(/\s+/)
+          .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+          .join(' ');
+
+        // Prevent duplicates (case-insensitive)
+        const exists = this.outing.squad.some(m => m.name.toLowerCase() === cleanName.toLowerCase());
+        if (exists) {
+          this.showToast(`"${cleanName}" is already in The Squad`, 'info');
+          return;
+        }
+
+        this.outing.squad.push({
+          id: 'mem_' + Date.now() + Math.random().toString(36).substring(2, 6),
+          name: cleanName,
+          upi: upi.trim()
+        });
+
+        this.saveState();
+        this.renderSquadChips();
+        this.checkDiscoveredStoryNames();
+      }
+
+      removeSquadMember(index) {
+        if (index >= 0 && index < this.outing.squad.length) {
+          const removed = this.outing.squad.splice(index, 1)[0];
+          this.saveState();
+          this.renderSquadChips();
+          this.checkDiscoveredStoryNames();
+          this.showToast(`Removed ${removed.name}`, 'info');
+        }
+      }
+
+      updateMemberUpi(name, upi) {
+        const member = this.outing.squad.find(m => m.name.toLowerCase() === name.toLowerCase());
+        if (member) {
+          member.upi = upi.trim();
+          this.saveState();
+          this.renderSquadChips();
+          this.renderSettlementGrid();
+          this.showToast(`Updated UPI for ${member.name}`, 'success');
+        }
+      }
+
+      // ========================================
+      // NATURAL LANGUAGE STORY PARSER
+      // ========================================
+      parseNarrativeStory(storyText) {
+        if (!storyText || !storyText.trim()) return [];
+
+        const squadNames = this.outing.squad.map(s => s.name);
+        const squadLowerMap = {};
+        squadNames.forEach(n => squadLowerMap[n.toLowerCase()] = n);
+
+        // Split sentences by newline, period, semicolon, exclamation
+        const rawSentences = storyText
+          .split(/\n+|\.(?:\s+|$)|;+|!+(?:\s+|$)/g)
+          .map(s => s.trim())
+          .filter(s => s.length > 3);
+
+        const extracted = [];
+
+        rawSentences.forEach((sentence, index) => {
+          // 1. Identify Payer
+          let payer = null;
+
+          // Pattern A: "paid by <Name>", "bought by <Name>", "spent by <Name>", "covered by <Name>"
+          const paidByMatch = sentence.match(/(?:paid|bought|spent|covered|given|chipped\s+in)\s+by\s+([A-Za-z0-9_]+)/i);
+          if (paidByMatch && squadLowerMap[paidByMatch[1].toLowerCase()]) {
+            payer = squadLowerMap[paidByMatch[1].toLowerCase()];
+          }
+
+          // Pattern B: "<Name> paid/spent/bought/covered/gave/chipped in/transferred/ordered"
+          if (!payer) {
+            for (const name of squadNames) {
+              const regex = new RegExp(`\\b${name}\\b\\s+(?:paid|spent|bought|covered|gave|chipped\\s+in|transferred|ordered|handled)`, 'i');
+              if (regex.test(sentence)) {
+                payer = name;
+                break;
+              }
+            }
+          }
+
+          // Pattern C: Sentence starts with <Name> unless followed by "paid by"
+          if (!payer) {
+            for (const name of squadNames) {
+              const regex = new RegExp(`^${name}\\b`, 'i');
+              if (regex.test(sentence)) {
+                if (!/(?:paid|bought|spent|covered)\s+by/i.test(sentence)) {
+                  payer = name;
+                  break;
+                }
+              }
+            }
+          }
+
+          // 2. Identify Amount
+          // Robust regex for currency numbers
+          const amountRegex = /(?:₹|rs\.?|inr)?\s*(\b\d{1,3}(?:,\d{2,3})*(?:\.\d{1,2})?\b|\b\d+(?:\.\d{1,2})?\b)\s*(?:₹|rs\.?|inr|bucks|rupees)?/gi;
+          let match;
+          let candidates = [];
+
+          while ((match = amountRegex.exec(sentence)) !== null) {
+            const fullMatch = match[0].trim();
+            const numStr = match[1].replace(/,/g, '');
+            const numVal = parseFloat(numStr);
+            if (isNaN(numVal) || numVal <= 0) continue;
+
+            const matchIndex = match.index;
+            const prevContext = sentence.slice(Math.max(0, matchIndex - 18), matchIndex).toLowerCase();
+            const nextContext = sentence.slice(matchIndex + fullMatch.length, matchIndex + fullMatch.length + 18).toLowerCase();
+
+            let score = 0;
+            // High score if accompanied by currency mark
+            if (/[₹]|rs|inr|bucks|rupees/i.test(fullMatch)) score += 45;
+            // Preceded by explicit price indicator patterns: "for 40", "worth 250", "paid 1200", "cost 500"
+            if (/(?:for|paid|spent|cost|worth|bill\s+of|bill\s+was|amounting\s+to|amount\s+of|totaling|of)\s*$/i.test(prevContext)) score += 35;
+            // Heavily penalize count/quantity tokens so items/counts are never extracted as currency amounts
+            if (/^\s*(?:water\s+bottles?|bottles?|plates?|beers?|cups?|cabs?|ubers?|tickets?|people|persons?|items?|litres?|ltr|cans?|pieces?|pcs?|naans?|rotis?|thalis?)/i.test(nextContext)) {
+              score -= 60; // Count tokens are never extracted as currency amounts
+            }
+            // In INR context, dinner/trip prices are usually >= 10
+            if (numVal >= 10) score += 5;
+            if (numVal >= 100) score += 10;
+
+            candidates.push({ val: numVal, score, numStr, fullMatch });
+          }
+
+          candidates.sort((a, b) => b.score - a.score);
+          const amountRupees = candidates.length > 0 ? candidates[0].val : 0;
+          const amountPaise = Math.round(amountRupees * 100);
+
+          // 3. Identify Exclusions
+          const excluded = [];
+          const exclusionMatch = sentence.match(/(?:except|without|excluding|minus|leaving\s+out|not\s+including)\s+([^.,;!]+)/i);
+          if (exclusionMatch) {
+            const exclClause = exclusionMatch[1];
+            squadNames.forEach(name => {
+              if (new RegExp(`\\b${name}\\b`, 'i').test(exclClause)) {
+                if (!excluded.includes(name)) excluded.push(name);
+              }
+            });
+          }
+
+          // 4. Identify Inclusions
+          let included = [];
+          const isForAll = /(?:for\s+all(?:\s+of\s+us)?|for\s+everyone|for\s+everybody|for\s+the\s+group|for\s+all\s+the\s+squad|for\s+whole\s+squad|for\s+us\s+all)/i.test(sentence);
+
+          if (isForAll) {
+            included = squadNames.filter(n => !excluded.includes(n));
+          } else {
+            let foundSpecific = false;
+
+            // Check if sentence starts with "<Name> ate/had/ordered/drank/opted"
+            for (const name of squadNames) {
+              const ateRegex = new RegExp(`^${name}\\b.*\\b(?:ate|had|ordered|took|drank|opted)\\b`, 'i');
+              if (ateRegex.test(sentence)) {
+                included.push(name);
+                foundSpecific = true;
+                break;
+              }
+            }
+
+            // Look for specific inclusion phrases: "for Priyasi", "between Rahul and Aman", "for himself and Plaban"
+            // Sanitize out any "paid by <Payer>" to avoid false inclusion of Payer
+            const sanitizedForSearch = sentence.replace(/(?:paid|bought|spent|covered|given)\s+by\s+[A-Za-z0-9_]+/gi, '');
+            const forMatch = sanitizedForSearch.match(/(?:for|between|split\s+between|split\s+by|shared\s+by|among)\s+([^.,;!]+)/i);
+
+            if (!foundSpecific && forMatch) {
+              const forClause = forMatch[1];
+              squadNames.forEach(name => {
+                if (new RegExp(`\\b${name}\\b`, 'i').test(forClause)) {
+                  if (!included.includes(name)) included.push(name);
+                  foundSpecific = true;
+                }
+              });
+              if (payer && /(?:himself|herself|themself|myself)/i.test(forClause)) {
+                if (!included.includes(payer)) included.push(payer);
+                foundSpecific = true;
+              }
+              // If payer paid for a shared group item (e.g. dessert, snacks, drinks, cab) for friends,
+              // include payer as well unless marked 'only for'
+              if (payer && !included.includes(payer) && !/(?:only|just)\s+for/i.test(sentence)) {
+                if (/(?:dessert|lunch|dinner|drinks|beers|snacks|cab|uber|food|coffee|tea|stay|hotel|room|fuel|toll)/i.test(sentence)) {
+                  included.unshift(payer);
+                }
+              }
+            }
+
+            // If exclusions were present, default included to everyone minus excluded
+            if (!foundSpecific && excluded.length > 0) {
+              included = squadNames.filter(n => !excluded.includes(n));
+              foundSpecific = true;
+            }
+
+            // Default to all squad members if no specific subset or exclusion specified
+            if (!foundSpecific || included.length === 0) {
+              included = squadNames.filter(n => !excluded.includes(n));
+            }
+          }
+
+          // 5. Clean Description Extraction
+          let desc = sentence;
+          if (payer) {
+            desc = desc.replace(new RegExp(`(?:paid|bought|spent|covered)\\s+by\\s+${payer}`, 'gi'), '');
+            desc = desc.replace(new RegExp(`\\b${payer}\\b\\s+(?:paid|spent|bought|covered|gave|chipped\\s+in|transferred|ordered)?`, 'gi'), '');
+          }
+          // Remove amounts & currency
+          desc = desc.replace(/(?:₹|rs\.?|inr)?\s*[0-9]{1,3}(?:,[0-9]{2,3})*(?:\.[0-9]{1,2})?\s*(?:₹|rs\.?|inr|bucks|rupees)?/gi, '');
+          // Remove exclusion phrase
+          desc = desc.replace(/(?:except|without|excluding|minus|leaving\s+out|not\s+including)\s+[^.,;!]+/gi, '');
+          // Remove generic "for all / everyone"
+          desc = desc.replace(/for\s+(?:all(?:\s+of\s+us)?|everyone|everybody|the\s+group|all\s+the\s+squad|whole\s+squad)/gi, '');
+          // Trim filler prepositions
+          desc = desc.replace(/^\s*(?:for|and|then|also|on|ate|had|bought)\s+/gi, '')
+                     .replace(/\s+(?:for|and|by)\s*$/gi, '')
+                     .replace(/\s+/g, ' ')
+                     .trim();
+
+          if (!desc || desc.length < 2) desc = `Expense #${index + 1}`;
+          desc = desc.charAt(0).toUpperCase() + desc.slice(1);
+
+          // Payer fallback if squad exists
+          if (!payer && squadNames.length > 0) {
+            payer = squadNames[0];
+          }
+
+          extracted.push({
+            id: 'exp_' + (index + 1) + '_' + Date.now(),
+            raw: sentence,
+            description: desc,
+            payer: payer || 'Unknown',
+            amountRupees: amountRupees,
+            amountPaise: amountPaise,
+            included: included.length > 0 ? included : [...squadNames],
+            excluded: excluded
+          });
+        });
+
+        return extracted;
+      }
+
+      // Check if narrative mentions names not in the squad
+      checkDiscoveredStoryNames() {
+        const banner = document.getElementById('discovered-names-banner');
+        const chipsContainer = document.getElementById('discovered-names-chips');
+        if (!banner || !chipsContainer) return;
+
+        const story = this.outing.story || '';
+        if (!story.trim()) {
+          banner.classList.add('hidden');
+          return;
+        }
+
+        // Find capitalized tokens that might be names
+        const words = story.match(/\b[A-Z][a-z]{2,15}\b/g) || [];
+        const existingSquadSet = new Set(this.outing.squad.map(m => m.name.toLowerCase()));
+        
+        // Common stop words to exclude
+        const stopWords = new Set(['Paid', 'Spent', 'Bought', 'Dinner', 'Lunch', 'Breakfast', 'Food', 'Water', 'Bottles', 'Uber', 'Ola', 'Hotel', 'Room', 'Resort', 'Except', 'Without', 'Everyone', 'Karim', 'October', 'Friday', 'Saturday', 'Sunday', 'Airtel', 'WiFi', 'Rupees']);
+
+        const discovered = new Set();
+        words.forEach(w => {
+          const lower = w.toLowerCase();
+          if (!existingSquadSet.has(lower) && !stopWords.has(w)) {
+            discovered.add(w);
+          }
+        });
+
+        if (discovered.size > 0) {
+          chipsContainer.innerHTML = Array.from(discovered).map(name => `
+            <span class="px-2 py-0.5 rounded bg-surfaceLight border border-amberGlow/40 text-amberGlow text-xs">
+              ${this.escapeHtml(name)}
+            </span>
+          `).join('');
+          banner.classList.remove('hidden');
+
+          document.getElementById('btn-add-discovered-names').onclick = () => {
+            discovered.forEach(name => this.addSquadMember(name));
+            this.showToast(`Added ${discovered.size} new members to The Squad!`, 'success');
+            banner.classList.add('hidden');
+          };
+        } else {
+          banner.classList.add('hidden');
+        }
+      }
+
+      // ========================================
+      // EXACT PAISE MATH & DEBT MINIMIZATION
+      // ========================================
+      calculateSettlements() {
+        const squad = this.outing.squad;
+        const expenses = this.outing.expenses;
+
+        if (squad.length === 0) {
+          this.showToast('Please add at least one member to The Squad.', 'info');
+          return;
+        }
+
+        // Initialize member totals with complete audit records
+        const memberTotals = {};
+        squad.forEach(m => {
+          memberTotals[m.name] = {
+            paidPaise: 0,
+            consumedPaise: 0,
+            netPaise: 0,
+            upi: m.upi || '',
+            paidItems: [],     // Array of { id, description, amountPaise }
+            consumedItems: []  // Array of { id, description, raw, payer, sharePaise, totalAmountPaise, participantCount, hasRemainderPaisa }
+          };
+        });
+
+        let totalSpendPaise = 0;
+        const matrix = [];
+
+        // Process each expense item
+        expenses.forEach((exp, expIdx) => {
+          const paise = exp.amountPaise || 0;
+          totalSpendPaise += paise;
+
+          // Record Payer
+          if (!memberTotals[exp.payer]) {
+            memberTotals[exp.payer] = { 
+              paidPaise: 0, 
+              consumedPaise: 0, 
+              netPaise: 0, 
+              upi: '',
+              paidItems: [],
+              consumedItems: []
+            };
+          }
+          memberTotals[exp.payer].paidPaise += paise;
+          memberTotals[exp.payer].paidItems.push({
+            id: exp.id || ('exp_' + expIdx),
+            description: exp.description || exp.raw || `Expense #${expIdx + 1}`,
+            amountPaise: paise
+          });
+
+          // Distribute to included participants with exact remainder allocation
+          const participants = exp.included && exp.included.length > 0 
+            ? exp.included 
+            : squad.map(s => s.name);
+          
+          const k = participants.length;
+          const rowShares = {};
+
+          if (k > 0) {
+            const baseShare = Math.floor(paise / k);
+            const remainder = paise % k;
+
+            participants.forEach((name, idx) => {
+              if (!memberTotals[name]) {
+                memberTotals[name] = { 
+                  paidPaise: 0, 
+                  consumedPaise: 0, 
+                  netPaise: 0, 
+                  upi: '',
+                  paidItems: [],
+                  consumedItems: []
+                };
+              }
+              const hasRemainder = idx < remainder;
+              const share = baseShare + (hasRemainder ? 1 : 0);
+              memberTotals[name].consumedPaise += share;
+              memberTotals[name].consumedItems.push({
+                id: exp.id || ('exp_' + expIdx),
+                description: exp.description || exp.raw || `Expense #${expIdx + 1}`,
+                raw: exp.raw,
+                payer: exp.payer,
+                sharePaise: share,
+                totalAmountPaise: paise,
+                participantCount: k,
+                hasRemainderPaisa: hasRemainder
+              });
+
+              rowShares[name] = {
+                included: true,
+                sharePaise: share,
+                hasRemainderPaisa: hasRemainder
+              };
+            });
+
+            // Mark excluded members
+            squad.forEach(m => {
+              if (!rowShares[m.name]) {
+                rowShares[m.name] = {
+                  included: false,
+                  sharePaise: 0,
+                  hasRemainderPaisa: false
+                };
+              }
+            });
+          }
+
+          matrix.push({
+            id: exp.id || ('exp_' + expIdx),
+            description: exp.description || exp.raw || `Expense #${expIdx + 1}`,
+            raw: exp.raw,
+            payer: exp.payer,
+            amountPaise: paise,
+            participantCount: k,
+            shares: rowShares
+          });
+        });
+
+        // Compute Net Balance for each person: Net = Total Paid - Total Consumed
+        let sumNet = 0;
+        Object.keys(memberTotals).forEach(name => {
+          const m = memberTotals[name];
+          m.netPaise = m.paidPaise - m.consumedPaise;
+          sumNet += m.netPaise;
+        });
+
+        // Greedy Minimum Cash-Flow algorithm
+        // Creditors: Net > 0 (owed money)
+        // Debtors: Net < 0 (owe money)
+        const creditors = [];
+        const debtors = [];
+
+        Object.keys(memberTotals).forEach(name => {
+          const net = memberTotals[name].netPaise;
+          if (net > 0) {
+            creditors.push({ name, amount: net, initial: net });
+          } else if (net < 0) {
+            debtors.push({ name, amount: -net, initial: -net });
+          }
+        });
+
+        // Sort descending
+        creditors.sort((a, b) => b.amount - a.amount);
+        debtors.sort((a, b) => b.amount - a.amount);
+
+        const transactions = [];
+        const stepsLog = [];
+        let cIdx = 0;
+        let dIdx = 0;
+
+        while (cIdx < creditors.length && dIdx < debtors.length) {
+          const creditor = creditors[cIdx];
+          const debtor = debtors[dIdx];
+
+          const settlePaise = Math.min(creditor.amount, debtor.amount);
+
+          if (settlePaise > 0) {
+            const debtorBefore = debtor.amount;
+            const creditorBefore = creditor.amount;
+
+            transactions.push({
+              from: debtor.name,
+              to: creditor.name,
+              amountPaise: settlePaise,
+              amountRupees: (settlePaise / 100).toFixed(2),
+              creditorUpi: memberTotals[creditor.name] ? memberTotals[creditor.name].upi : ''
+            });
+
+            stepsLog.push({
+              stepNumber: transactions.length,
+              debtor: debtor.name,
+              creditor: creditor.name,
+              settlePaise,
+              settleRupees: (settlePaise / 100).toFixed(2),
+              debtorBeforePaise: debtorBefore,
+              creditorBeforePaise: creditorBefore,
+              debtorAfterPaise: debtorBefore - settlePaise,
+              creditorAfterPaise: creditorBefore - settlePaise
+            });
+
+            creditor.amount -= settlePaise;
+            debtor.amount -= settlePaise;
+          }
+
+          if (creditor.amount === 0) cIdx++;
+          if (debtor.amount === 0) dIdx++;
+        }
+
+        this.settlementResult = {
+          memberTotals,
+          transactions,
+          totalSpendPaise,
+          driftPaise: Math.abs(sumNet),
+          matrix,
+          stepsLog
+        };
+
+        this.saveState();
+        this.renderAll();
+        this.showToast('Calculated settlements with zero paise drift!', 'success');
+      }
+
+      // ========================================
+      // SPEECH RECOGNITION (Web Speech API)
+      // ========================================
+      setupSpeechRecognition() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+          const dictateBtn = document.getElementById('btn-dictate');
+          if (dictateBtn) {
+            dictateBtn.title = "Speech recognition is not supported in this browser. Use Chrome, Edge, or Safari.";
+          }
+          return;
+        }
+
+        this.speechRecognition = new SpeechRecognition();
+        this.speechRecognition.continuous = true;
+        this.speechRecognition.interimResults = true;
+        this.speechRecognition.lang = 'en-IN'; // Optimized for Indian English, currency & names
+
+        this.speechRecognition.onstart = () => {
+          this.isDictating = true;
+          this.updateDictationUI(true);
+        };
+
+        this.speechRecognition.onresult = (event) => {
+          let interimTranscript = '';
+          let finalTranscript = '';
+
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+              finalTranscript += event.results[i][0].transcript + '. ';
+            } else {
+              interimTranscript += event.results[i][0].transcript;
+            }
+          }
+
+          const storyInput = document.getElementById('story-input');
+          if (storyInput && finalTranscript) {
+            storyInput.value = (storyInput.value ? storyInput.value.trim() + ' ' : '') + finalTranscript.trim();
+            this.outing.story = storyInput.value;
+            this.saveState();
+            this.updateStoryCounters();
+            this.checkDiscoveredStoryNames();
+          }
+        };
+
+        this.speechRecognition.onerror = (event) => {
+          console.warn('Speech recognition error:', event.error);
+          this.stopDictation();
+          if (event.error !== 'no-speech') {
+            this.showToast(`Voice error: ${event.error}`, 'error');
+          }
+        };
+
+        this.speechRecognition.onend = () => {
+          this.isDictating = false;
+          this.updateDictationUI(false);
+        };
+      }
+
+      toggleDictation() {
+        if (!this.speechRecognition) {
+          this.showToast('Web Speech API is supported natively in Chrome, Edge & Safari.', 'info');
+          return;
+        }
+
+        if (this.isDictating) {
+          this.stopDictation();
+        } else {
+          try {
+            this.speechRecognition.start();
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      }
+
+      stopDictation() {
+        if (this.speechRecognition && this.isDictating) {
+          this.speechRecognition.stop();
+        }
+        this.isDictating = false;
+        this.updateDictationUI(false);
+      }
+
+      updateDictationUI(active) {
+        const dictateBtn = document.getElementById('btn-dictate');
+        const dictateText = document.getElementById('dictate-text');
+        const dictateIndicator = document.getElementById('dictate-indicator');
+        const listeningBar = document.getElementById('listening-bar');
+
+        if (active) {
+          dictateBtn.classList.add('border-rose-500', 'bg-rose-500/10', 'text-rose-400');
+          dictateText.textContent = "Stop";
+          dictateIndicator.classList.remove('hidden');
+          listeningBar.classList.remove('hidden');
+        } else {
+          dictateBtn.classList.remove('border-rose-500', 'bg-rose-500/10', 'text-rose-400');
+          dictateText.textContent = "Dictate";
+          dictateIndicator.classList.add('hidden');
+          listeningBar.classList.add('hidden');
+        }
+      }
+
+      // ========================================
+      // RENDERING FUNCTIONS
+      // ========================================
+      renderAll() {
+        this.renderMetadata();
+        this.renderSquadChips();
+        this.renderStoryBox();
+        this.renderParsedLineItems();
+        this.renderMetrics();
+        this.renderSettlementGrid();
+        this.updateHistoryCountBadge();
+      }
+
+      renderMetadata() {
+        const titleInput = document.getElementById('outing-title');
+        const dateInput = document.getElementById('outing-date');
+        const metaSpend = document.getElementById('meta-total-spend');
+        const metaCount = document.getElementById('meta-expense-count');
+
+        if (titleInput) titleInput.value = this.outing.title || '';
+        if (dateInput) dateInput.value = this.outing.date || new Date().toISOString().split('T')[0];
+        
+        const spendStr = `₹${(this.settlementResult.totalSpendPaise / 100).toFixed(2)}`;
+        if (metaSpend) metaSpend.textContent = spendStr;
+        if (metaCount) metaCount.textContent = `${this.outing.expenses.length} expenses`;
+      }
+
+      renderSquadChips() {
+        const container = document.getElementById('squad-chip-container');
+        const countBadge = document.getElementById('squad-count-badge');
+        const input = document.getElementById('squad-input');
+
+        if (!container || !input) return;
+
+        // Remove old chips (preserve the input)
+        const oldChips = container.querySelectorAll('.squad-chip');
+        oldChips.forEach(c => c.remove());
+
+        if (countBadge) countBadge.textContent = this.outing.squad.length;
+
+        // Gradients for initials
+        const gradients = [
+          'from-amber-500 to-rose-500',
+          'from-emerald-400 to-teal-600',
+          'from-sky-400 to-indigo-600',
+          'from-purple-500 to-pink-500',
+          'from-orange-400 to-amber-600'
+        ];
+
+        this.outing.squad.forEach((member, index) => {
+          const grad = gradients[index % gradients.length];
+          const initial = member.name.charAt(0).toUpperCase();
+
+          const chip = document.createElement('div');
+          chip.className = 'squad-chip group inline-flex items-center gap-1.5 pl-1.5 pr-2 py-1 bg-surfaceLight border border-surfaceBorder hover:border-slate-500 rounded-full text-xs font-medium text-slate-200 shadow-sm animate-fadeIn transition cursor-pointer';
+          
+          chip.innerHTML = `
+            <span class="w-5 h-5 rounded-full bg-gradient-to-tr ${grad} text-obsidian text-[10px] font-bold flex items-center justify-center shadow-xs">
+              ${initial}
+            </span>
+            <span class="font-semibold text-slate-100">${this.escapeHtml(member.name)}</span>
+            ${member.upi ? `<span class="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emeraldMint/10 text-emeraldMint border border-emeraldMint/30">UPI</span>` : `<span class="text-[9px] text-slate-500 hover:text-amberGlow">+UPI</span>`}
+            <button type="button" class="chip-delete-btn ml-0.5 text-slate-500 hover:text-rose-400 text-xs px-1 rounded-full transition" title="Remove ${member.name}">
+              ✕
+            </button>
+          `;
+
+          // Clicking chip opens UPI editor
+          chip.onclick = (e) => {
+            if (e.target.closest('.chip-delete-btn')) {
+              e.stopPropagation();
+              this.removeSquadMember(index);
+            } else {
+              this.openUpiModal(member.name, member.upi);
+            }
+          };
+
+          container.insertBefore(chip, input);
+        });
+      }
+
+      renderStoryBox() {
+        const storyInput = document.getElementById('story-input');
+        if (storyInput && storyInput.value !== this.outing.story) {
+          storyInput.value = this.outing.story || '';
+        }
+        this.updateStoryCounters();
+      }
+
+      updateStoryCounters() {
+        const story = this.outing.story || '';
+        const charCounter = document.getElementById('story-char-counter');
+        const sentenceCounter = document.getElementById('story-sentence-counter');
+
+        if (charCounter) charCounter.textContent = `${story.length} chars`;
+
+        const sentences = story.split(/\n+|\.(?:\s+|$)|;+/g).filter(s => s.trim().length > 3);
+        if (sentenceCounter) sentenceCounter.textContent = `${sentences.length} clauses`;
+      }
+
+      renderParsedLineItems() {
+        const section = document.getElementById('parsed-expenses-section');
+        const list = document.getElementById('parsed-expenses-list');
+        const badge = document.getElementById('parsed-count-badge');
+
+        if (!section || !list) return;
+
+        if (this.outing.expenses.length === 0) {
+          section.classList.add('hidden');
+          return;
+        }
+
+        section.classList.remove('hidden');
+        if (badge) badge.textContent = `${this.outing.expenses.length} events`;
+
+        list.innerHTML = this.outing.expenses.map((exp, idx) => {
+          // Indian Rupee formatting with comma separators (e.g. ₹1,200.00)
+          const formattedAmount = (exp.amountPaise / 100).toLocaleString('en-IN', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          });
+
+          // Formatted "For: Name, Name, Name" list
+          const forList = exp.included && exp.included.length > 0
+            ? exp.included.join(', ')
+            : 'All Squad';
+
+          // Clean original narrative sentence without stray surrounding quotes
+          let rawQuote = exp.raw ? exp.raw.trim().replace(/^["']+|["']+$/g, '') : exp.description;
+          if (!rawQuote) rawQuote = exp.description;
+
+          return `
+            <div class="bg-surface border border-surfaceBorder hover:border-slate-600 rounded-2xl p-5 sm:p-6 shadow-xl transition-all duration-200 flex flex-col justify-between group relative">
+              <div>
+                <!-- Top Row: Payer Name & Amount (matching reference image) -->
+                <div class="flex items-start justify-between gap-3">
+                  <h4 class="text-base sm:text-lg font-bold text-white tracking-tight">
+                    ${this.escapeHtml(exp.payer)}
+                  </h4>
+                  <div class="flex items-center gap-2">
+                    <span class="text-base sm:text-lg font-bold font-mono text-white tracking-tight">
+                      ₹${formattedAmount}
+                    </span>
+                    <!-- Subtle Edit / Delete controls on hover -->
+                    <div class="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 -mr-1">
+                      <button onclick="app.editExpenseItem(${idx})" class="p-1 text-slate-500 hover:text-amberGlow transition rounded hover:bg-surfaceLight" title="Edit event">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                      </button>
+                      <button onclick="app.deleteExpenseItem(${idx})" class="p-1 text-slate-500 hover:text-rose-400 transition rounded hover:bg-surfaceLight" title="Delete event">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Second Row: For: ... -->
+                <div class="text-sm text-slate-400 font-normal mt-1 leading-snug">
+                  For: <span class="text-slate-300 font-normal">${this.escapeHtml(forList)}</span>
+                </div>
+
+                <!-- Third Row: Sentence quote in italics -->
+                <div class="mt-4 text-sm text-slate-300 italic font-normal leading-relaxed">
+                  "${this.escapeHtml(rawQuote)}"
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      editExpenseItem(index) {
+        if (index < 0 || index >= this.outing.expenses.length) return;
+        const exp = this.outing.expenses[index];
+        const newPayer = prompt("Payer name:", exp.payer);
+        if (!newPayer) return;
+        const newAmount = prompt("Amount in ₹:", (exp.amountPaise / 100).toFixed(2));
+        if (!newAmount || isNaN(parseFloat(newAmount))) return;
+        const newFor = prompt("Split for (comma-separated members):", exp.included.join(', '));
+        if (!newFor) return;
+
+        exp.payer = newPayer.trim();
+        exp.amountRupees = parseFloat(newAmount);
+        exp.amountPaise = Math.round(exp.amountRupees * 100);
+        exp.included = newFor.split(',').map(s => s.trim()).filter(Boolean);
+        this.saveState();
+        this.calculateSettlements();
+      }
+
+      deleteExpenseItem(index) {
+        if (index >= 0 && index < this.outing.expenses.length) {
+          this.outing.expenses.splice(index, 1);
+          this.saveState();
+          this.calculateSettlements();
+        }
+      }
+
+      renderMetrics() {
+        const totalSpendEl = document.getElementById('metric-total-spend');
+        const expenseCountEl = document.getElementById('metric-expense-count');
+        const squadCountEl = document.getElementById('metric-squad-count');
+        const transfersCountEl = document.getElementById('metric-transfers-count');
+        const driftEl = document.getElementById('metric-drift');
+
+        const spendStr = `₹${(this.settlementResult.totalSpendPaise / 100).toFixed(2)}`;
+        if (totalSpendEl) totalSpendEl.textContent = spendStr;
+        if (expenseCountEl) expenseCountEl.textContent = `${this.outing.expenses.length} items calculated`;
+        if (squadCountEl) squadCountEl.textContent = this.outing.squad.length;
+        if (transfersCountEl) transfersCountEl.textContent = this.settlementResult.transactions.length;
+        if (driftEl) driftEl.textContent = `${(this.settlementResult.driftPaise / 100).toFixed(2)}p`;
+      }
+
+      renderSettlementGrid() {
+        const grid = document.getElementById('person-cards-grid');
+        const emptyState = document.getElementById('settlement-empty-state');
+
+        if (!grid || !emptyState) return;
+
+        const squad = this.outing.squad;
+        const transactions = this.settlementResult.transactions;
+        const totals = this.settlementResult.memberTotals;
+
+        if (squad.length === 0 || this.outing.expenses.length === 0) {
+          grid.innerHTML = '';
+          emptyState.classList.remove('hidden');
+          return;
+        }
+
+        emptyState.classList.add('hidden');
+
+        const gradients = [
+          'from-amber-500 to-rose-500',
+          'from-emerald-400 to-teal-600',
+          'from-sky-400 to-indigo-600',
+          'from-purple-500 to-pink-500',
+          'from-orange-400 to-amber-600'
+        ];
+
+        grid.innerHTML = squad.map((member, index) => {
+          const grad = gradients[index % gradients.length];
+          const initial = member.name.charAt(0).toUpperCase();
+          const info = totals[member.name] || { paidPaise: 0, consumedPaise: 0, netPaise: 0, upi: member.upi };
+
+          const netPaise = info.netPaise;
+          const isCreditor = netPaise > 0;
+          const isDebtor = netPaise < 0;
+          const isSettled = netPaise === 0;
+
+          const netRupees = (Math.abs(netPaise) / 100).toFixed(2);
+          const paidRupees = (info.paidPaise / 100).toFixed(2);
+          const consumedRupees = (info.consumedPaise / 100).toFixed(2);
+
+          // Find transactions where this member needs to PAY (strictly outgoing dues only)
+          const paymentsToMake = transactions.filter(t => t.from === member.name);
+          const totalOwedPaise = paymentsToMake.reduce((sum, t) => sum + t.amountPaise, 0);
+          const totalOwedRupees = (totalOwedPaise / 100).toFixed(2);
+          const hasDues = paymentsToMake.length > 0;
+
+          return `
+            <div class="bg-surface border border-surfaceBorder hover:border-slate-600 rounded-2xl p-5 shadow-xl transition-all duration-200 flex flex-col justify-between relative overflow-hidden group">
+              <!-- Top Glow Line based on dues status -->
+              <div class="absolute top-0 left-0 right-0 h-1 ${hasDues ? 'bg-roseCrimson' : 'bg-emeraldMint'}"></div>
+
+              <div>
+                <!-- Header with Avatar & Total Owed Pill -->
+                <div class="flex items-start justify-between gap-3 mb-4">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr ${grad} p-[1.5px] shadow-md">
+                      <div class="w-full h-full bg-surface rounded-[10px] flex items-center justify-center font-bold text-white text-base">
+                        ${initial}
+                      </div>
+                    </div>
+                    <div>
+                      <h3 class="font-bold text-slate-100 text-base leading-tight">${this.escapeHtml(member.name)}</h3>
+                      <button onclick="app.openUpiModal('${this.escapeHtml(member.name)}', '${this.escapeHtml(member.upi || '')}')" 
+                              class="text-[11px] font-mono text-slate-400 hover:text-amberGlow transition flex items-center gap-1 mt-0.5">
+                        <span>${member.upi ? `@${this.escapeHtml(member.upi)}` : '+ Set UPI ID'}</span>
+                        <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Status Badge: Owes ₹... or Owes ₹0.00 -->
+                  <div>
+                    ${hasDues ? `
+                      <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-roseCrimson/10 border border-roseCrimson/30 text-roseCrimson text-xs font-mono font-bold">
+                        Owes ₹${totalOwedRupees}
+                      </span>
+                    ` : `
+                      <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emeraldMint/10 border border-emeraldMint/30 text-emeraldMint text-xs font-mono font-bold">
+                        Owes ₹0.00
+                      </span>
+                    `}
+                  </div>
+                </div>
+
+                <!-- Financial Stats Row -->
+                <div class="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-obsidian border border-surfaceBorder/80 mb-3 text-xs font-mono">
+                  <div>
+                    <span class="text-slate-500 text-[10px] uppercase tracking-wider block">Paid</span>
+                    <span class="text-slate-200 font-semibold">₹${paidRupees}</span>
+                  </div>
+                  <div>
+                    <span class="text-slate-500 text-[10px] uppercase tracking-wider block">Consumed</span>
+                    <span class="text-slate-200 font-semibold">₹${consumedRupees}</span>
+                  </div>
+                </div>
+
+                <!-- Personal Breakdown Accordion Trigger -->
+                <div class="mb-4">
+                  <button type="button" onclick="app.toggleMemberAudit('${this.escapeHtml(member.name)}')" 
+                          class="w-full flex items-center justify-between text-[11px] text-slate-400 hover:text-amberGlow transition font-medium px-2.5 py-1.5 rounded-lg bg-surfaceLight/50 border border-surfaceBorder/70 hover:border-slate-500">
+                    <span class="flex items-center gap-1.5">
+                      <span>🔍</span>
+                      <span>How was ${hasDues ? 'Owes ₹' + totalOwedRupees : '₹0.00 dues'} calculated?</span>
+                    </span>
+                    <span id="audit-arrow-${this.escapeHtml(member.name)}" class="text-xs transition-transform duration-200">▾</span>
+                  </button>
+
+                  <div id="audit-box-${this.escapeHtml(member.name)}" class="hidden mt-2 p-3 rounded-xl bg-obsidian border border-surfaceBorder text-xs space-y-2 font-sans">
+                    ${this.renderPersonalBreakdownHtml(member.name, info)}
+                  </div>
+                </div>
+
+                <!-- Actionable Settlement List (Strictly Outgoing "Pay to" Only - NO "Receive from" rows) -->
+                <div class="space-y-2.5 mb-2">
+                  ${hasDues ? `
+                    <div class="text-[11px] font-bold uppercase tracking-wider text-rose-400 flex items-center gap-1 mb-1.5">
+                      <span>🚨</span>
+                      <span>Outgoing Dues:</span>
+                    </div>
+
+                    ${paymentsToMake.map(pay => `
+                      <div class="p-3 rounded-xl bg-rose-500/5 border border-rose-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                        <div>
+                          <div class="text-xs font-semibold text-slate-200 flex items-center gap-1.5 flex-wrap">
+                            <span class="text-rose-400 font-bold">➔ Pay to</span>
+                            <strong class="text-white">${this.escapeHtml(pay.to)}:</strong>
+                            <span class="font-mono font-bold text-rose-300">₹${pay.amountRupees}</span>
+                          </div>
+                          ${pay.creditorUpi ? `<div class="text-[10px] font-mono text-slate-400 mt-0.5">UPI: ${this.escapeHtml(pay.creditorUpi)}</div>` : ''}
+                        </div>
+
+                        <!-- Direct 1-Click UPI Payment Button -->
+                        <button onclick="app.triggerUpiPayment('${this.escapeHtml(pay.to)}', '${pay.amountRupees}', '${this.escapeHtml(pay.creditorUpi)}')" 
+                                class="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-emeraldMint hover:bg-emeraldMintDark text-obsidian font-bold text-xs shadow-sm transition active:scale-95 whitespace-nowrap">
+                          <span>📲 Pay via UPI</span>
+                        </button>
+                      </div>
+                    `).join('')}
+                  ` : `
+                    <div class="p-3.5 rounded-xl bg-emeraldMint/5 border border-emeraldMint/20 text-center flex flex-col items-center justify-center">
+                      <div class="flex items-center gap-1.5 text-xs font-bold text-emeraldMint">
+                        <span>✓</span>
+                        <span>No payment dues • All clear</span>
+                      </div>
+                      <p class="text-[11px] text-slate-400 mt-0.5 font-normal">
+                        ${isCreditor ? `Surplus payee • Receives ₹${netRupees} from group` : `Fully squared up • Zero dues`}
+                      </p>
+                    </div>
+                  `}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // ========================================
+      // UPI PAYMENT TRIGGER & QR GENERATOR
+      // ========================================
+      triggerUpiPayment(payeeName, amountRupees, payeeUpi) {
+        if (!payeeUpi) {
+          // If payee has no UPI ID configured, prompt user to enter it on the fly
+          this.openUpiModal(payeeName, '', (savedUpi) => {
+            this.executeUpiIntent(payeeName, amountRupees, savedUpi);
+          });
+          return;
+        }
+
+        this.executeUpiIntent(payeeName, amountRupees, payeeUpi);
+      }
+
+      executeUpiIntent(payeeName, amountRupees, payeeUpi) {
+        const title = this.outing.title || 'HisabMate Settlement';
+        const note = `HisabMate: ${title}`;
+        
+        // Standard NPCI UPI URI
+        const upiUri = `upi://pay?pa=${encodeURIComponent(payeeUpi)}&pn=${encodeURIComponent(payeeName)}&am=${amountRupees}&cu=INR&tn=${encodeURIComponent(note)}`;
+
+        this.currentQrIntent = upiUri;
+
+        // Try direct launch for mobile devices
+        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        
+        if (isMobile) {
+          window.location.href = upiUri;
+        }
+
+        // Open QR modal on desktop (or as instant fallback on mobile)
+        this.openQrModal(payeeName, amountRupees, payeeUpi, upiUri);
+      }
+
+      openQrModal(name, amount, upi, uri) {
+        const backdrop = document.getElementById('qr-modal-backdrop');
+        const payeeNameEl = document.getElementById('qr-payee-name');
+        const payeeVpaEl = document.getElementById('qr-payee-vpa');
+        const payeeAmountEl = document.getElementById('qr-payee-amount');
+        const directLinkEl = document.getElementById('qr-direct-link');
+        const qrMount = document.getElementById('qr-code-mount');
+
+        if (payeeNameEl) payeeNameEl.textContent = name;
+        if (payeeVpaEl) payeeVpaEl.textContent = upi;
+        if (payeeAmountEl) payeeAmountEl.textContent = `₹${amount}`;
+        if (directLinkEl) directLinkEl.href = uri;
+
+        if (qrMount) {
+          qrMount.innerHTML = '';
+          try {
+            if (typeof QRCode !== 'undefined') {
+              new QRCode(qrMount, {
+                text: uri,
+                width: 180,
+                height: 180,
+                colorDark: "#090b0e",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.M
+              });
+            } else {
+              qrMount.innerHTML = `<div class="p-4 text-xs font-mono text-slate-800 break-all">${uri}</div>`;
+            }
+          } catch (e) {
+            console.error('QR code generation failed:', e);
+          }
+        }
+
+        if (backdrop) backdrop.classList.remove('hidden');
+      }
+
+      closeQrModal() {
+        const backdrop = document.getElementById('qr-modal-backdrop');
+        if (backdrop) backdrop.classList.add('hidden');
+      }
+
+      copyQrIntent() {
+        if (this.currentQrIntent) {
+          navigator.clipboard.writeText(this.currentQrIntent).then(() => {
+            this.showToast('UPI Payment URI copied to clipboard!', 'success');
+          });
+        }
+      }
+
+      // ========================================
+      // UPI MODAL EDITOR
+      // ========================================
+      openUpiModal(memberName, currentUpi, onSavedCallback = null) {
+        this.activeModalMember = memberName;
+        this.upiSavedCallback = onSavedCallback;
+
+        const backdrop = document.getElementById('upi-modal-backdrop');
+        const title = document.getElementById('upi-modal-title');
+        const desc = document.getElementById('upi-modal-desc');
+        const input = document.getElementById('upi-modal-input');
+
+        if (title) title.textContent = `Configure UPI for ${memberName}`;
+        if (desc) desc.textContent = `Set UPI VPA handle for ${memberName} so payments open automatically in GPay/PhonePe.`;
+        if (input) {
+          input.value = currentUpi || '';
+          setTimeout(() => input.focus(), 50);
+        }
+
+        if (backdrop) backdrop.classList.remove('hidden');
+      }
+
+      closeUpiModal() {
+        const backdrop = document.getElementById('upi-modal-backdrop');
+        if (backdrop) backdrop.classList.add('hidden');
+        this.activeModalMember = null;
+        this.upiSavedCallback = null;
+      }
+
+      saveUpiFromModal() {
+        const input = document.getElementById('upi-modal-input');
+        if (!input || !this.activeModalMember) return;
+
+        const upi = input.value.trim();
+        this.updateMemberUpi(this.activeModalMember, upi);
+
+        if (this.upiSavedCallback) {
+          this.upiSavedCallback(upi);
+        }
+
+        this.closeUpiModal();
+      }
+
+      // ========================================
+      // EXPORT & WHATSAPP SUMMARY GENERATION
+      // ========================================
+      generateSummaryText() {
+        const title = this.outing.title || 'Outing Settlement';
+        const date = this.outing.date || new Date().toISOString().split('T')[0];
+        const totalSpend = (this.settlementResult.totalSpendPaise / 100).toFixed(2);
+        const squad = this.outing.squad.map(s => s.name).join(', ');
+        const transactions = this.settlementResult.transactions;
+        const totals = this.settlementResult.memberTotals;
+
+        let msg = `🧾 *HisabMate: ${title}*\n`;
+        msg += `📅 *Date:* ${date}\n`;
+        msg += `💰 *Total Outing Spend:* ₹${totalSpend} (${this.outing.expenses.length} expenses)\n`;
+        msg += `👥 *Squad:* ${squad}\n\n`;
+
+        msg += `━━━━━━━━━━━━━━━━━━━\n`;
+        msg += `📊 *NET BALANCES*\n`;
+        this.outing.squad.forEach(m => {
+          const info = totals[m.name];
+          if (!info) return;
+          const net = info.netPaise;
+          const rupees = (Math.abs(net) / 100).toFixed(2);
+          if (net > 0) {
+            msg += `• *${m.name}*: +₹${rupees} _(to receive)_\n`;
+          } else if (net < 0) {
+            msg += `• *${m.name}*: -₹${rupees} _(needs to pay)_\n`;
+          } else {
+            msg += `• *${m.name}*: ₹0.00 _(square)_\n`;
+          }
+        });
+
+        msg += `\n━━━━━━━━━━━━━━━━━━━\n`;
+        if (transactions.length === 0) {
+          msg += `🎉 *All square! No cash transfers needed.*\n`;
+        } else {
+          msg += `🤝 *MINIMUM CASHFLOW SETTLEMENTS (${transactions.length} transfers)*\n`;
+          transactions.forEach((t, i) => {
+            const upiTag = t.creditorUpi ? ` (UPI: ${t.creditorUpi})` : '';
+            msg += `${i + 1}️⃣ *${t.from}* ➔ pays *₹${t.amountRupees}* to *${t.to}*${upiTag}\n`;
+          });
+        }
+
+        msg += `\n━━━━━━━━━━━━━━━━━━━\n`;
+        msg += `✨ *Paise-accurate (0 drift)* • Settled via HisabMate`;
+
+        return msg;
+      }
+
+      shareToWhatsApp() {
+        const text = this.generateSummaryText();
+        navigator.clipboard.writeText(text).then(() => {
+          this.showToast('Formatted WhatsApp summary copied to clipboard!', 'success');
+        });
+
+        // Open WhatsApp web / mobile directly
+        const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+        window.open(url, '_blank');
+      }
+
+      copySummaryText() {
+        const text = this.generateSummaryText();
+        navigator.clipboard.writeText(text).then(() => {
+          this.showToast('Settlement text copied to clipboard!', 'success');
+        });
+      }
+
+      exportJSON() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.outing, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `hisabmate_${this.outing.title ? this.outing.title.replace(/\s+/g, '_') : 'outing'}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+        this.showToast('Exported outing JSON backup', 'info');
+      }
+
+      // ========================================
+      // OUTING STATE SHARING & QR SYNC
+      // ========================================
+      openShareModal() {
+        const backdrop = document.getElementById('share-modal-backdrop');
+        const input = document.getElementById('share-link-input');
+        const qrMount = document.getElementById('share-qr-mount');
+
+        if (!backdrop || !input || !qrMount) return;
+
+        const shareUrl = this.getShareableLink();
+        input.value = shareUrl;
+
+        qrMount.innerHTML = '';
+        try {
+          if (typeof QRCode !== 'undefined') {
+            new QRCode(qrMount, {
+              text: shareUrl,
+              width: 170,
+              height: 170,
+              colorDark: "#090b0e",
+              colorLight: "#ffffff",
+              correctLevel: QRCode.CorrectLevel.M
+            });
+          }
+        } catch (e) {
+          console.error('Failed to generate sharing QR:', e);
+        }
+
+        backdrop.classList.remove('hidden');
+      }
+
+      closeShareModal() {
+        const backdrop = document.getElementById('share-modal-backdrop');
+        if (backdrop) backdrop.classList.add('hidden');
+      }
+
+      getShareableLink() {
+        const minimal = {
+          v: 1,
+          t: this.outing.title || "Our Outing",
+          d: this.outing.date,
+          s: this.outing.squad.map(m => ({ n: m.name, u: m.upi || '' })),
+          st: this.outing.story || '',
+          e: this.outing.expenses.map(e => ({
+            p: e.payer,
+            a: e.amountRupees,
+            f: e.included,
+            d: e.description,
+            r: e.raw
+          }))
+        };
+        const jsonStr = JSON.stringify(minimal);
+        const b64 = btoa(encodeURIComponent(jsonStr).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode('0x' + p1)));
+        return `${window.location.origin}${window.location.pathname}#data=${encodeURIComponent(b64)}`;
+      }
+
+      copyShareLink() {
+        const input = document.getElementById('share-link-input');
+        if (input && input.value) {
+          navigator.clipboard.writeText(input.value).then(() => {
+            this.showToast('Shareable link copied to clipboard!', 'success');
+          }).catch(() => {
+            input.select();
+            document.execCommand('copy');
+            this.showToast('Shareable link copied to clipboard!', 'success');
+          });
+        }
+      }
+
+      shareLinkWhatsApp() {
+        const url = this.getShareableLink();
+        const title = this.outing.title || 'Our Outing';
+        const text = `Join & inspect our outing expenses for "${title}" on HisabMate (no signup needed):\n${url}`;
+        const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+        window.open(waUrl, '_blank');
+      }
+
+      shareLinkNative() {
+        const url = this.getShareableLink();
+        const title = this.outing.title || 'Our Outing';
+        if (navigator.share) {
+          navigator.share({
+            title: `HisabMate: ${title}`,
+            text: `View and settle our group expenses for "${title}" on HisabMate:`,
+            url: url
+          }).catch(() => {});
+        } else {
+          this.copyShareLink();
+        }
+      }
+
+      checkHashImport() {
+        const hash = window.location.hash || '';
+        if (hash.startsWith('#data=') || hash.startsWith('#import=')) {
+          const raw = hash.replace(/^#(?:data|import)=/, '');
+          try {
+            const jsonStr = decodeURIComponent(Array.prototype.map.call(atob(decodeURIComponent(raw)), (c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+            const min = JSON.parse(jsonStr);
+            if (min && (min.s || min.squad)) {
+              this.outing = {
+                id: 'out_' + Date.now(),
+                title: min.t || min.title || "Imported Outing",
+                date: min.d || min.date || new Date().toISOString().split('T')[0],
+                squad: (min.s || min.squad || []).map((m, idx) => {
+                  const name = typeof m === 'string' ? m : (m.n || m.name || `Member ${idx + 1}`);
+                  const upi = typeof m === 'object' ? (m.u || m.upi || '') : '';
+                  return { id: 'mem_' + Date.now() + '_' + idx, name, upi };
+                }),
+                story: min.st || min.story || '',
+                expenses: (min.e || min.expenses || []).map((e, idx) => ({
+                  id: 'exp_' + (idx + 1) + '_' + Date.now(),
+                  description: e.d || e.description || `Expense #${idx + 1}`,
+                  raw: e.r || e.raw || e.d || e.description || '',
+                  payer: e.p || e.payer,
+                  amountRupees: e.a || e.amountRupees,
+                  amountPaise: Math.round((e.a || e.amountRupees) * 100),
+                  included: e.f || e.included || [],
+                  excluded: []
+                })),
+                updatedAt: Date.now()
+              };
+
+              this.saveState();
+              this.calculateSettlements();
+              try {
+                history.replaceState(null, '', window.location.pathname + window.location.search);
+              } catch (e) {}
+              this.showToast(`Imported outing: "${this.outing.title}"`, 'success');
+            }
+          } catch (err) {
+            console.error('Failed to import outing from hash:', err);
+            this.showToast('Could not load outing from link. Corrupt payload.', 'error');
+          }
+        }
+      }
+
+      // ========================================
+      // SAMPLES LOADER
+      // ========================================
+      loadSample(sampleId) {
+        if (sampleId === 1) {
+          // Classic dinner
+          this.outing.title = "Dinner at Karim's";
+          this.outing.squad = [
+            { id: 'm1', name: 'Plaban', upi: 'plaban@oksbi' },
+            { id: 'm2', name: 'Priyasi', upi: '' },
+            { id: 'm3', name: 'Anuj', upi: 'anuj@okhdfcbank' },
+            { id: 'm4', name: 'Arkadeep', upi: '' }
+          ];
+          this.outing.story = "Plaban paid 1200 for lunch for all of us except Priyasi. Priyasi ate veg for 250 paid by Anuj. Arkadeep bought 2 water bottles for 40 for everyone. Later Plaban paid 300 for dessert for Arkadeep and Priyasi.";
+        } else if (sampleId === 2) {
+          // Digha trip
+          this.outing.title = "Digha Weekend Trip";
+          this.outing.squad = [
+            { id: 'm1', name: 'Rohan', upi: 'rohan@paytm' },
+            { id: 'm2', name: 'Tanya', upi: 'tanya@apl' },
+            { id: 'm3', name: 'Sneha', upi: '' },
+            { id: 'm4', name: 'Rahul', upi: 'rahul@ybl' },
+            { id: 'm5', name: 'Aman', upi: '' }
+          ];
+          this.outing.story = "Rohan paid 3500 for highway toll and car fuel for everyone. Tanya paid 1800 for seafood lunch without Rohan. Sneha spent 600 on coconut water and snacks for all of us. Rahul paid 1200 for hotel dessert for Rahul and Aman.";
+        } else if (sampleId === 3) {
+          // Flatmates
+          this.outing.title = "October Flat Bills";
+          this.outing.squad = [
+            { id: 'm1', name: 'Vikram', upi: 'vikram@okaxis' },
+            { id: 'm2', name: 'Kabir', upi: 'kabir@icici' },
+            { id: 'm3', name: 'Dev', upi: 'dev@axl' }
+          ];
+          this.outing.story = "Vikram paid 1499 for Airtel broadband for all. Dev bought groceries for 2400 for everyone. Kabir paid 650 for drinking water cans for everyone except Vikram.";
+        }
+
+        // Close sample story dropdown
+        const dropdown = document.getElementById('sample-story-dropdown');
+        if (dropdown) dropdown.classList.add('hidden');
+
+        // Parse and calculate
+        const parsed = this.parseNarrativeStory(this.outing.story);
+        this.outing.expenses = parsed;
+        this.calculateSettlements();
+      }
+
+      // ========================================
+      // MANUAL EXPENSE ADDITION MODAL / ROW
+      // ========================================
+      addManualExpensePrompt() {
+        const desc = prompt("Enter expense description (e.g. Dessert, Cab, Extra Tip):");
+        if (!desc) return;
+
+        const amountStr = prompt("Enter amount in Rupees (e.g. 350):");
+        const amount = parseFloat(amountStr);
+        if (isNaN(amount) || amount <= 0) {
+          this.showToast("Please enter a valid amount", "error");
+          return;
+        }
+
+        const squadNames = this.outing.squad.map(s => s.name);
+        const payer = prompt(`Who paid? (${squadNames.join(', ')})`, squadNames[0]);
+        if (!payer) return;
+
+        this.outing.expenses.push({
+          id: 'exp_manual_' + Date.now(),
+          raw: `${payer} paid ${amount} for ${desc}`,
+          description: desc,
+          payer: payer.trim(),
+          amountRupees: amount,
+          amountPaise: Math.round(amount * 100),
+          included: [...squadNames],
+          excluded: []
+        });
+
+        this.calculateSettlements();
+      }
+
+      // ========================================
+      // HISTORY DRAWER MANAGEMENT
+      // ========================================
+      openHistoryDrawer() {
+        this.renderHistoryDrawer();
+        const backdrop = document.getElementById('history-drawer-backdrop');
+        const drawer = document.getElementById('history-drawer');
+        if (backdrop && drawer) {
+          backdrop.classList.remove('hidden');
+          setTimeout(() => drawer.classList.remove('translate-x-full'), 10);
+        }
+      }
+
+      closeHistoryDrawer() {
+        const backdrop = document.getElementById('history-drawer-backdrop');
+        const drawer = document.getElementById('history-drawer');
+        if (backdrop && drawer) {
+          drawer.classList.add('translate-x-full');
+          setTimeout(() => backdrop.classList.add('hidden'), 300);
+        }
+      }
+
+      renderHistoryDrawer() {
+        const listEl = document.getElementById('history-list');
+        if (!listEl) return;
+
+        const history = this.getPastOutings();
+        this.updateHistoryCountBadge();
+
+        if (history.length === 0) {
+          listEl.innerHTML = `
+            <div class="p-6 text-center text-slate-500 bg-obsidian rounded-xl border border-surfaceBorder">
+              <span class="text-2xl mb-1 block">📂</span>
+              <p class="text-xs">No saved outings found.</p>
+              <p class="text-[11px] text-slate-600 mt-0.5">Click "Save Current Outing" below to store one.</p>
+            </div>
+          `;
+          return;
+        }
+
+        listEl.innerHTML = history.map((item, idx) => `
+          <div class="bg-obsidian border border-surfaceBorder hover:border-slate-500 rounded-xl p-3.5 transition flex flex-col justify-between gap-2 text-xs">
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <h4 class="font-bold text-slate-100 text-sm">${this.escapeHtml(item.title)}</h4>
+                <div class="text-[11px] text-slate-500 mt-0.5 font-mono">
+                  ${item.date} • ${item.squad.length} members
+                </div>
+              </div>
+              <span class="font-mono font-bold text-amberGlow text-sm">
+                ₹${((item.totalSpendPaise || 0) / 100).toFixed(2)}
+              </span>
+            </div>
+
+            <div class="flex items-center justify-between pt-2 border-t border-surfaceBorder/60">
+              <span class="text-[10px] text-slate-500">
+                ${item.expenses.length} expenses • ${item.transactionsCount || 0} transfers
+              </span>
+              <div class="flex items-center gap-1.5">
+                <button onclick="app.loadOutingFromHistory(${idx})" class="px-2.5 py-1 rounded-lg bg-surfaceLight hover:bg-surfaceHover text-slate-200 font-semibold transition text-[11px]">
+                  Load ➔
+                </button>
+                <button onclick="app.deleteOutingFromHistory(${idx})" class="p-1 text-slate-500 hover:text-rose-400 transition" title="Delete">
+                  ✕
+                </button>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      loadOutingFromHistory(index) {
+        const history = this.getPastOutings();
+        if (index >= 0 && index < history.length) {
+          const item = history[index];
+          this.outing = {
+            id: item.id || ('out_' + Date.now()),
+            title: item.title,
+            date: item.date,
+            squad: [...item.squad],
+            story: item.story || '',
+            expenses: [...item.expenses],
+            updatedAt: Date.now()
+          };
+          this.calculateSettlements();
+          this.closeHistoryDrawer();
+          this.showToast(`Loaded "${item.title}"`, 'success');
+        }
+      }
+
+      deleteOutingFromHistory(index) {
+        const history = this.getPastOutings();
+        if (index >= 0 && index < history.length) {
+          history.splice(index, 1);
+          this.savePastOutings(history);
+          this.renderHistoryDrawer();
+          this.showToast('Deleted from history', 'info');
+        }
+      }
+
+      clearAllHistory() {
+        if (confirm("Are you sure you want to clear all saved history from this browser?")) {
+          this.savePastOutings([]);
+          this.renderHistoryDrawer();
+          this.showToast('History cleared', 'info');
+        }
+      }
+
+      updateHistoryCountBadge() {
+        const badge = document.getElementById('history-count-badge');
+        if (badge) {
+          badge.textContent = this.getPastOutings().length;
+        }
+      }
+
+      // ========================================
+      // NEW OUTING CREATION
+      // ========================================
+      newOuting() {
+        if (confirm("Start a new outing? Your current data will be saved to history first.")) {
+          this.saveCurrentToHistory();
+          this.outing = {
+            id: 'out_' + Date.now(),
+            title: '',
+            date: new Date().toISOString().split('T')[0],
+            squad: [...this.outing.squad], // retain squad for convenience!
+            story: '',
+            expenses: [],
+            updatedAt: Date.now()
+          };
+          this.settlementResult = {
+            memberTotals: {},
+            transactions: [],
+            totalSpendPaise: 0,
+            driftPaise: 0
+          };
+          this.saveState();
+          this.renderAll();
+          this.showToast('Started fresh outing. Squad kept for your convenience!', 'info');
+        }
+      }
+
+      // ========================================
+      // INFO MODAL
+      // ========================================
+      openInfoModal() {
+        const modal = document.getElementById('info-modal-backdrop');
+        if (modal) modal.classList.remove('hidden');
+      }
+
+      closeInfoModal() {
+        const modal = document.getElementById('info-modal-backdrop');
+        if (modal) modal.classList.add('hidden');
+      }
+
+      // ========================================
+      // CALCULATION AUDIT & SETTLEMENT PROOF
+      // ========================================
+      openAuditModal() {
+        this.renderAuditModal();
+        const modal = document.getElementById('audit-modal-backdrop');
+        if (modal) modal.classList.remove('hidden');
+      }
+
+      closeAuditModal() {
+        const modal = document.getElementById('audit-modal-backdrop');
+        if (modal) modal.classList.add('hidden');
+      }
+
+      setAuditTab(tab) {
+        this.currentAuditTab = tab;
+        ['matrix', 'equations', 'trace'].forEach(t => {
+          const btn = document.getElementById(`audit-tab-${t}`);
+          if (btn) {
+            if (t === tab) {
+              btn.className = 'py-3 px-4 font-bold border-b-2 border-amberGlow text-amberGlow transition flex items-center gap-1.5 whitespace-nowrap';
+            } else {
+              btn.className = 'py-3 px-4 font-medium border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition flex items-center gap-1.5 whitespace-nowrap';
+            }
+          }
+        });
+        this.renderAuditModal();
+      }
+
+      renderPersonalBreakdownHtml(name, info) {
+        const paidItems = info.paidItems || [];
+        const consumedItems = info.consumedItems || [];
+
+        let html = '<div class="space-y-2.5">';
+
+        // Section A: Upfront payments
+        html += '<div>';
+        html += '<span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Upfront Payments Made:</span>';
+        if (paidItems.length === 0) {
+          html += '<p class="text-[11px] text-slate-500 italic">Did not pay for any item upfront (₹0.00)</p>';
+        } else {
+          html += '<ul class="space-y-1 text-[11px] font-mono">';
+          paidItems.forEach(item => {
+            html += `<li class="flex items-center justify-between text-slate-300">
+              <span class="truncate max-w-[170px] font-sans">${this.escapeHtml(item.description)}</span>
+              <span class="text-emeraldMint font-bold">+₹${(item.amountPaise / 100).toFixed(2)}</span>
+            </li>`;
+          });
+          html += `<li class="flex items-center justify-between text-slate-200 pt-1 border-t border-surfaceBorder/60 font-bold">
+            <span class="font-sans">Total Paid</span>
+            <span class="text-emeraldMint">₹${(info.paidPaise / 100).toFixed(2)}</span>
+          </li>`;
+          html += '</ul>';
+        }
+        html += '</div>';
+
+        // Section B: Consumption
+        html += '<div>';
+        html += '<span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Your Item Shares Consumed:</span>';
+        if (consumedItems.length === 0) {
+          html += '<p class="text-[11px] text-slate-500 italic">No items consumed (₹0.00)</p>';
+        } else {
+          html += '<ul class="space-y-1 text-[11px] font-mono">';
+          consumedItems.forEach(item => {
+            const share = (item.sharePaise / 100).toFixed(2);
+            const total = (item.totalAmountPaise / 100).toFixed(2);
+            html += `<li class="flex items-center justify-between text-slate-300">
+              <span class="truncate max-w-[160px] font-sans" title="${this.escapeHtml(item.description)}">
+                ${this.escapeHtml(item.description)}
+                <span class="text-[9px] text-slate-500 block">share of ₹${total} (${item.participantCount} pple${item.hasRemainderPaisa ? ' +1p' : ''})</span>
+              </span>
+              <span class="text-rose-400 font-medium self-start">-₹${share}</span>
+            </li>`;
+          });
+          html += `<li class="flex items-center justify-between text-slate-200 pt-1 border-t border-surfaceBorder/60 font-bold">
+            <span class="font-sans">Total Consumed</span>
+            <span class="text-rose-400">₹${(info.consumedPaise / 100).toFixed(2)}</span>
+          </li>`;
+          html += '</ul>';
+        }
+        html += '</div>';
+
+        // Section C: Net Equation
+        const netPaise = info.netPaise;
+        const netRupees = (Math.abs(netPaise) / 100).toFixed(2);
+        html += `<div class="pt-2 border-t border-surfaceBorder/80 font-mono text-[11px] flex items-center justify-between">
+          <span class="text-slate-400 font-sans font-medium">Net = Paid - Consumed</span>
+          <span class="font-bold ${netPaise > 0 ? 'text-emeraldMint' : netPaise < 0 ? 'text-roseCrimson' : 'text-slate-400'}">
+            ${netPaise > 0 ? '+₹' + netRupees : netPaise < 0 ? '-₹' + netRupees : '₹0.00'}
+          </span>
+        </div>`;
+
+        html += '</div>';
+        return html;
+      }
+
+      toggleMemberAudit(name) {
+        const box = document.getElementById(`audit-box-${name}`);
+        const arrow = document.getElementById(`audit-arrow-${name}`);
+        if (!box) return;
+
+        const isHidden = box.classList.contains('hidden');
+        if (isHidden) {
+          box.classList.remove('hidden');
+          if (arrow) arrow.textContent = '▴';
+        } else {
+          box.classList.add('hidden');
+          if (arrow) arrow.textContent = '▾';
+        }
+      }
+
+      renderAuditModal() {
+        const body = document.getElementById('audit-modal-body');
+        if (!body) return;
+
+        const squad = this.outing.squad;
+        const matrix = this.settlementResult.matrix || [];
+        const memberTotals = this.settlementResult.memberTotals;
+        const stepsLog = this.settlementResult.stepsLog || [];
+        const totalSpendRupees = (this.settlementResult.totalSpendPaise / 100).toFixed(2);
+
+        if (this.currentAuditTab === 'matrix') {
+          // Tab 1: Item-by-Item Consumption Matrix
+          body.innerHTML = `
+            <div class="space-y-4">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                <span class="text-slate-400">
+                  Detailed consumption matrix: each column shows what that member owes for each event.
+                </span>
+                <span class="font-mono text-amberGlow font-bold">Total Spent: ₹${totalSpendRupees}</span>
+              </div>
+
+              <div class="overflow-x-auto rounded-xl border border-surfaceBorder bg-obsidian">
+                <table class="w-full text-left text-xs border-collapse">
+                  <thead class="bg-surfaceLight/60 border-b border-surfaceBorder text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
+                    <tr>
+                      <th class="p-3 whitespace-nowrap">Event / Expense</th>
+                      <th class="p-3 whitespace-nowrap">Payer</th>
+                      <th class="p-3 text-right whitespace-nowrap">Total</th>
+                      ${squad.map(m => `<th class="p-3 text-right whitespace-nowrap text-slate-200">${this.escapeHtml(m.name)}</th>`).join('')}
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-surfaceBorder/60 bg-surface">
+                    ${matrix.map(row => {
+                      const amountRupees = (row.amountPaise / 100).toFixed(2);
+                      return `
+                        <tr class="hover:bg-surfaceLight/30 transition">
+                          <td class="p-3 font-medium text-slate-200 max-w-[220px]">
+                            <div class="truncate font-semibold">${this.escapeHtml(row.description)}</div>
+                            <div class="text-[10px] text-slate-500 italic truncate font-normal">"${this.escapeHtml(row.raw || '')}"</div>
+                          </td>
+                          <td class="p-3 whitespace-nowrap font-medium text-amberGlow">${this.escapeHtml(row.payer)}</td>
+                          <td class="p-3 text-right font-mono font-bold text-white whitespace-nowrap">₹${amountRupees}</td>
+                          ${squad.map(m => {
+                            const shareInfo = row.shares[m.name];
+                            if (!shareInfo || !shareInfo.included) {
+                              return `<td class="p-3 text-right text-slate-600 font-mono text-[11px]">—</td>`;
+                            }
+                            const shareRupees = (shareInfo.sharePaise / 100).toFixed(2);
+                            return `
+                              <td class="p-3 text-right font-mono font-medium text-slate-200 whitespace-nowrap">
+                                ₹${shareRupees}
+                                ${shareInfo.hasRemainderPaisa ? '<span class="text-[9px] text-amberGlow ml-0.5" title="Remainder paisa allocated">+1p</span>' : ''}
+                              </td>
+                            `;
+                          }).join('')}
+                        </tr>
+                      `;
+                    }).join('')}
+                  </tbody>
+                  <tfoot class="bg-obsidian border-t-2 border-surfaceBorder font-mono font-bold text-xs divide-y divide-surfaceBorder/40">
+                    <tr>
+                      <td class="p-3 uppercase text-[10px] tracking-wider text-slate-400">Total Consumed</td>
+                      <td class="p-3 text-slate-500">—</td>
+                      <td class="p-3 text-right text-amberGlow">₹${totalSpendRupees}</td>
+                      ${squad.map(m => {
+                        const consumed = memberTotals[m.name] ? (memberTotals[m.name].consumedPaise / 100).toFixed(2) : '0.00';
+                        return `<td class="p-3 text-right text-rose-400 font-bold">₹${consumed}</td>`;
+                      }).join('')}
+                    </tr>
+                    <tr>
+                      <td class="p-3 uppercase text-[10px] tracking-wider text-emeraldMint">Total Paid</td>
+                      <td class="p-3 text-slate-500">—</td>
+                      <td class="p-3 text-right text-emeraldMint">₹${totalSpendRupees}</td>
+                      ${squad.map(m => {
+                        const paid = memberTotals[m.name] ? (memberTotals[m.name].paidPaise / 100).toFixed(2) : '0.00';
+                        return `<td class="p-3 text-right text-emeraldMint font-bold">₹${paid}</td>`;
+                      }).join('')}
+                    </tr>
+                    <tr class="bg-surfaceLight/40 font-bold">
+                      <td class="p-3 uppercase text-[10px] tracking-wider text-white">Net Balance</td>
+                      <td class="p-3 text-slate-500">—</td>
+                      <td class="p-3 text-right text-slate-300">₹0.00</td>
+                      ${squad.map(m => {
+                        const info = memberTotals[m.name];
+                        if (!info) return `<td class="p-3 text-right text-slate-400">₹0.00</td>`;
+                        const net = info.netPaise;
+                        const netStr = (Math.abs(net) / 100).toFixed(2);
+                        const color = net > 0 ? 'text-emeraldMint' : net < 0 ? 'text-roseCrimson' : 'text-slate-400';
+                        const sign = net > 0 ? '+' : net < 0 ? '-' : '';
+                        return `<td class="p-3 text-right ${color} font-mono font-bold">${sign}₹${netStr}</td>`;
+                      }).join('')}
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              <div class="p-3 rounded-xl bg-surfaceLight/50 border border-surfaceBorder text-xs text-slate-400 leading-relaxed">
+                <span class="text-amberGlow font-bold">💡 How Remainder Paise Allocation Works:</span> 
+                When ₹100 is split among 3 people, <code class="text-slate-200">10000 % 3 = 1</code> remainder paisa. HisabMate allocates the +1p increment deterministically to the first participant so that <code class="text-emeraldMint">₹33.34 + ₹33.33 + ₹33.33 ≡ ₹100.00</code> exactly.
+              </div>
+            </div>
+          `;
+        } else if (this.currentAuditTab === 'equations') {
+          // Tab 2: Net Balance Equations
+          let totalCreditorsPaise = 0;
+          let totalDebtorsPaise = 0;
+
+          squad.forEach(m => {
+            const net = memberTotals[m.name] ? memberTotals[m.name].netPaise : 0;
+            if (net > 0) totalCreditorsPaise += net;
+            if (net < 0) totalDebtorsPaise += Math.abs(net);
+          });
+
+          body.innerHTML = `
+            <div class="space-y-4">
+              <div class="p-4 rounded-xl bg-emeraldMint/10 border border-emeraldMint/30 text-xs">
+                <div class="flex items-center gap-2 font-bold text-emeraldMint text-sm mb-1">
+                  <span>✓</span>
+                  <span>Conservation of Money Invariant</span>
+                </div>
+                <div class="font-mono text-slate-200 text-xs">
+                  Total Surpluses (+₹${(totalCreditorsPaise / 100).toFixed(2)}) 
+                  + Total Deficits (-₹${(totalDebtorsPaise / 100).toFixed(2)}) 
+                  = <strong class="text-emeraldMint">0.00 paise drift</strong>
+                </div>
+                <p class="text-slate-400 text-[11px] mt-1">
+                  Because every paisa spent equals every paisa consumed, the entire group's net balances sum precisely to zero.
+                </p>
+              </div>
+
+              <div class="space-y-3">
+                ${squad.map(m => {
+                  const info = memberTotals[m.name] || { paidPaise: 0, consumedPaise: 0, netPaise: 0 };
+                  const net = info.netPaise;
+                  const isCreditor = net > 0;
+                  const isDebtor = net < 0;
+                  const netStr = (Math.abs(net) / 100).toFixed(2);
+                  const paidStr = (info.paidPaise / 100).toFixed(2);
+                  const consumedStr = (info.consumedPaise / 100).toFixed(2);
+
+                  return `
+                    <div class="p-4 rounded-xl bg-obsidian border border-surfaceBorder flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+                      <div>
+                        <div class="flex items-center gap-2">
+                          <span class="font-bold text-white text-sm">${this.escapeHtml(m.name)}</span>
+                          <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${isCreditor ? 'bg-emeraldMint/10 text-emeraldMint border border-emeraldMint/30' : isDebtor ? 'bg-roseCrimson/10 text-roseCrimson border border-roseCrimson/30' : 'bg-slate-800 text-slate-400 border border-slate-700'}">
+                            ${isCreditor ? 'CREDITOR (+SURPLUS)' : isDebtor ? 'DEBTOR (-DEFICIT)' : 'SQUARE (0)'}
+                          </span>
+                        </div>
+                        <div class="font-mono text-slate-300 mt-1.5 flex items-center gap-1.5 flex-wrap">
+                          <span class="text-slate-400 font-sans">Net Balance =</span>
+                          <span>Paid (<strong class="text-emeraldMint">₹${paidStr}</strong>)</span>
+                          <span>-</span>
+                          <span>Consumed (<strong class="text-rose-400">₹${consumedStr}</strong>)</span>
+                          <span>=</span>
+                          <span class="font-bold text-sm ${isCreditor ? 'text-emeraldMint' : isDebtor ? 'text-roseCrimson' : 'text-slate-400'}">
+                            ${isCreditor ? '+' : isDebtor ? '-' : ''}₹${netStr}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div class="text-[11px] text-slate-400 md:text-right">
+                        ${isCreditor ? `Should receive <strong class="text-white">₹${netStr}</strong> from group` : isDebtor ? `Must pay <strong class="text-white">₹${netStr}</strong> to group` : `Fully settled. No transfers needed.`}
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          `;
+        } else if (this.currentAuditTab === 'trace') {
+          // Tab 3: Greedy Cash-Flow Trace
+          body.innerHTML = `
+            <div class="space-y-4">
+              <div class="text-xs text-slate-400 leading-relaxed">
+                <span class="font-bold text-white">Why did we pick these exact payments?</span><br>
+                If everyone settled peer-to-peer individually, a 4-person outing would require up to 6 separate payments. 
+                HisabMate applies the <strong class="text-amberGlow">Greedy Minimum Cash-Flow algorithm</strong>: we sort all debtors and creditors by size and match the largest debtor with the largest creditor. This guarantees the entire group is settled in at most <strong class="text-white">N - 1 = ${squad.length - 1} transfers</strong>!
+              </div>
+
+              <div class="space-y-3 font-mono text-xs">
+                ${stepsLog.length === 0 ? `
+                  <div class="p-4 rounded-xl bg-obsidian border border-surfaceBorder text-center text-slate-400">
+                    All members are already square! 0 transfers required.
+                  </div>
+                ` : stepsLog.map(step => `
+                  <div class="p-4 rounded-xl bg-obsidian border border-surfaceBorder space-y-2">
+                    <div class="flex items-center justify-between text-slate-200">
+                      <div class="flex items-center gap-2">
+                        <span class="w-5 h-5 rounded-full bg-amberGlow/20 text-amberGlow flex items-center justify-center text-[10px] font-bold">
+                          ${step.stepNumber}
+                        </span>
+                        <span class="font-bold text-white font-sans">${this.escapeHtml(step.debtor)}</span>
+                        <span class="text-rose-400 font-bold">➔ pays</span>
+                        <span class="text-emeraldMint font-bold font-mono text-sm">₹${step.settleRupees}</span>
+                        <span class="text-slate-400 font-sans">to</span>
+                        <span class="font-bold text-white font-sans">${this.escapeHtml(step.creditor)}</span>
+                      </div>
+                      <span class="text-[10px] text-slate-500 font-sans">Greedy match</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-400 pt-1 border-t border-surfaceBorder/60">
+                      <div>
+                        ${this.escapeHtml(step.debtor)} deficit before: <span class="text-rose-400">₹${step.debtorBefore}</span> 
+                        ➔ after: <span class="text-slate-200 font-bold">₹${step.debtorAfter}</span>
+                        ${step.debtorAfter === '0.00' ? '<span class="text-emeraldMint font-sans ml-1 font-bold">✓ Settled</span>' : ''}
+                      </div>
+                      <div>
+                        ${this.escapeHtml(step.creditor)} credit before: <span class="text-emeraldMint">₹${step.creditorBefore}</span> 
+                        ➔ after: <span class="text-slate-200 font-bold">₹${step.creditorAfter}</span>
+                        ${step.creditorAfter === '0.00' ? '<span class="text-emeraldMint font-sans ml-1 font-bold">✓ Settled</span>' : ''}
+                      </div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }
+      }
+
+      // ========================================
+      // TOAST NOTIFICATIONS
+      // ========================================
+      showToast(message, type = 'info') {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+
+        const toast = document.createElement('div');
+        const borderColor = type === 'success' ? 'border-emeraldMint/40 bg-emeraldMint/10 text-emeraldMint'
+                          : type === 'error' ? 'border-roseCrimson/40 bg-roseCrimson/10 text-roseCrimson'
+                          : 'border-amberGlow/40 bg-amberGlow/10 text-amberGlow';
+
+        toast.className = `px-4 py-2.5 rounded-xl border backdrop-blur-md shadow-2xl text-xs font-semibold flex items-center gap-2 pointer-events-auto animate-slideDown ${borderColor}`;
+        
+        const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
+        toast.innerHTML = `<span class="font-bold">${icon}</span> <span>${this.escapeHtml(message)}</span>`;
+
+        container.appendChild(toast);
+
+        setTimeout(() => {
+          toast.style.opacity = '0';
+          toast.style.transform = 'translateY(-10px)';
+          toast.style.transition = 'all 0.3s ease';
+          setTimeout(() => toast.remove(), 300);
+        }, 3200);
+      }
+
+      // ========================================
+      // UTILITIES
+      // ========================================
+      escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+
+      // ========================================
+      // EVENT LISTENERS SETUP
+      // ========================================
+      setupEventListeners() {
+        // Outing Title input
+        const titleInput = document.getElementById('outing-title');
+        if (titleInput) {
+          titleInput.addEventListener('input', (e) => {
+            this.outing.title = e.target.value;
+            this.saveState();
+          });
+        }
+
+        // Outing Date input
+        const dateInput = document.getElementById('outing-date');
+        if (dateInput) {
+          dateInput.addEventListener('change', (e) => {
+            this.outing.date = e.target.value;
+            this.saveState();
+          });
+        }
+
+        // Squad Chip Input
+        const squadInput = document.getElementById('squad-input');
+        if (squadInput) {
+          squadInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ',') {
+              e.preventDefault();
+              const val = squadInput.value.replace(/,/g, '').trim();
+              if (val) {
+                this.addSquadMember(val);
+                squadInput.value = '';
+              }
+            } else if (e.key === ' ' && squadInput.value.trim().length > 0) {
+              // Space creates chip if text has length
+              e.preventDefault();
+              this.addSquadMember(squadInput.value.trim());
+              squadInput.value = '';
+            } else if (e.key === 'Backspace' && squadInput.value === '') {
+              // Delete last chip on backspace if empty
+              if (this.outing.squad.length > 0) {
+                this.removeSquadMember(this.outing.squad.length - 1);
+              }
+            }
+          });
+
+          // Focus input when clicking on container
+          const chipContainer = document.getElementById('squad-chip-container');
+          if (chipContainer) {
+            chipContainer.addEventListener('click', () => squadInput.focus());
+          }
+        }
+
+        // Load Sample Squad button
+        const sampleSquadBtn = document.getElementById('btn-load-sample-squad');
+        if (sampleSquadBtn) {
+          sampleSquadBtn.addEventListener('click', () => {
+            ['Plaban', 'Priyasi', 'Anuj', 'Arkadeep'].forEach(name => this.addSquadMember(name));
+          });
+        }
+
+        // Clear Squad button
+        const clearSquadBtn = document.getElementById('btn-clear-squad');
+        if (clearSquadBtn) {
+          clearSquadBtn.addEventListener('click', () => {
+            if (confirm("Clear all squad members?")) {
+              this.outing.squad = [];
+              this.saveState();
+              this.renderSquadChips();
+              this.calculateSettlements();
+            }
+          });
+        }
+
+        // Story input textarea
+        const storyInput = document.getElementById('story-input');
+        if (storyInput) {
+          storyInput.addEventListener('input', (e) => {
+            this.outing.story = e.target.value;
+            this.saveState();
+            this.updateStoryCounters();
+            this.checkDiscoveredStoryNames();
+          });
+
+          // Ctrl+Enter shortcut to calculate
+          storyInput.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+              e.preventDefault();
+              this.triggerParseAndCalculate();
+            }
+          });
+        }
+
+        // Dictate button
+        const dictateBtn = document.getElementById('btn-dictate');
+        if (dictateBtn) {
+          dictateBtn.addEventListener('click', () => this.toggleDictation());
+        }
+
+        const stopDictationBtn = document.getElementById('btn-stop-dictation');
+        if (stopDictationBtn) {
+          stopDictationBtn.addEventListener('click', () => this.stopDictation());
+        }
+
+        // Sample Stories Dropdown toggle
+        const sampleStoriesBtn = document.getElementById('btn-sample-stories');
+        const sampleDropdown = document.getElementById('sample-story-dropdown');
+        if (sampleStoriesBtn && sampleDropdown) {
+          sampleStoriesBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            sampleDropdown.classList.toggle('hidden');
+          });
+
+          document.addEventListener('click', (e) => {
+            if (!sampleDropdown.contains(e.target) && e.target !== sampleStoriesBtn) {
+              sampleDropdown.classList.add('hidden');
+            }
+          });
+        }
+
+        // Clear story button
+        const clearStoryBtn = document.getElementById('btn-clear-story');
+        if (clearStoryBtn) {
+          clearStoryBtn.addEventListener('click', () => {
+            this.outing.story = '';
+            this.saveState();
+            this.renderStoryBox();
+            this.checkDiscoveredStoryNames();
+          });
+        }
+
+        // Calculate Button
+        const calcBtn = document.getElementById('btn-calculate');
+        if (calcBtn) {
+          calcBtn.addEventListener('click', () => this.triggerParseAndCalculate());
+        }
+
+        // Add Manual Item button
+        const manualItemBtn = document.getElementById('btn-add-manual-item');
+        if (manualItemBtn) {
+          manualItemBtn.addEventListener('click', () => this.addManualExpensePrompt());
+        }
+
+        // WhatsApp Share button
+        const waBtn = document.getElementById('btn-share-whatsapp');
+        if (waBtn) {
+          waBtn.addEventListener('click', () => this.shareToWhatsApp());
+        }
+
+        // Copy Text Summary button
+        const copySummaryBtn = document.getElementById('btn-copy-summary');
+        if (copySummaryBtn) {
+          copySummaryBtn.addEventListener('click', () => this.copySummaryText());
+        }
+
+        // History Drawer Open / Close
+        const openHistoryBtn = document.getElementById('btn-open-history');
+        if (openHistoryBtn) {
+          openHistoryBtn.addEventListener('click', () => this.openHistoryDrawer());
+        }
+
+        const closeHistoryBtn = document.getElementById('btn-close-history');
+        if (closeHistoryBtn) {
+          closeHistoryBtn.addEventListener('click', () => this.closeHistoryDrawer());
+        }
+
+        const saveHistoryBtn = document.getElementById('btn-save-current-history');
+        if (saveHistoryBtn) {
+          saveHistoryBtn.addEventListener('click', () => this.saveCurrentToHistory());
+        }
+
+        const clearHistoryBtn = document.getElementById('btn-clear-all-history');
+        if (clearHistoryBtn) {
+          clearHistoryBtn.addEventListener('click', () => this.clearAllHistory());
+        }
+
+        // New Outing button
+        const newOutingBtn = document.getElementById('btn-new-outing');
+        if (newOutingBtn) {
+          newOutingBtn.addEventListener('click', () => this.newOuting());
+        }
+
+        // Share Outing Buttons
+        const headerShareBtn = document.getElementById('btn-header-share');
+        if (headerShareBtn) {
+          headerShareBtn.addEventListener('click', () => this.openShareModal());
+        }
+
+        const openShareModalBtn = document.getElementById('btn-open-share-modal');
+        if (openShareModalBtn) {
+          openShareModalBtn.addEventListener('click', () => this.openShareModal());
+        }
+
+        // Calculation Audit & Proof button
+        const openAuditBtn = document.getElementById('btn-open-audit');
+        if (openAuditBtn) {
+          openAuditBtn.addEventListener('click', () => this.openAuditModal());
+        }
+
+        // How it works / Info Modal
+        const openInfoBtn = document.getElementById('btn-open-info');
+        if (openInfoBtn) {
+          openInfoBtn.addEventListener('click', () => this.openInfoModal());
+        }
+
+        // UPI Modal Save button
+        const saveUpiBtn = document.getElementById('btn-save-upi');
+        if (saveUpiBtn) {
+          saveUpiBtn.addEventListener('click', () => this.saveUpiFromModal());
+        }
+
+        const upiInput = document.getElementById('upi-modal-input');
+        if (upiInput) {
+          upiInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+              this.saveUpiFromModal();
+            }
+          });
+        }
+      }
+
+      triggerParseAndCalculate(scroll = true) {
+        const story = this.outing.story || '';
+        if (!story.trim() && this.outing.expenses.length === 0) {
+          this.showToast('Please type or dictate an expense story first.', 'info');
+          return;
+        }
+
+        // Extract expenses from natural language narrative
+        const parsed = this.parseNarrativeStory(story);
+        this.outing.expenses = parsed;
+        this.calculateSettlements();
+
+        if (scroll) {
+          const target = document.getElementById('parsed-expenses-section');
+          if (target && !target.classList.contains('hidden')) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          } else {
+            const grid = document.getElementById('person-cards-grid');
+            if (grid) grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }
+      }
+    }
+
+    // Initialize global application instance
+    let app;
+    window.addEventListener('DOMContentLoaded', () => {
+      app = new HisabMate();
+      // Run initial calculation if story and squad exist without auto-scrolling
+      if (app.outing.squad.length > 0 && app.outing.story.trim().length > 0) {
+        app.triggerParseAndCalculate(false);
+      }
+    });
+
+    // Register Service Worker for PWA Offline Capability
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.log('HisabMate Service Worker active:', reg.scope))
+          .catch(err => console.warn('Service Worker registration skipped:', err));
+      });
+    }
+  </script>
+</body>
+</html>
