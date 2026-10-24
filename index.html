@@ -448,9 +448,14 @@
               </div>
             </div>
           </div>
-          <button id="btn-stop-dictation" type="button" class="px-3 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 font-semibold text-xs whitespace-nowrap self-end sm:self-center transition active:scale-95 shadow-sm">
-            Bas Ho Gaya (Done) ✓
-          </button>
+          <div class="flex items-center gap-2 self-end sm:self-center">
+            <button id="btn-toggle-speech-lang" type="button" class="px-2.5 py-1.5 rounded-lg bg-surfaceLight border border-surfaceBorder hover:border-amberGlow text-slate-200 text-xs font-mono transition" title="Switch language between Hinglish/English and Hindi">
+              🌐 <span id="speech-lang-text" class="text-amberGlow font-bold">en-IN (English/Hinglish)</span>
+            </button>
+            <button id="btn-stop-dictation" type="button" class="px-3 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 font-semibold text-xs whitespace-nowrap transition active:scale-95 shadow-sm">
+              Bas Ho Gaya (Done) ✓
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1086,6 +1091,10 @@
         this.speechRecognition = null;
         this.isDictating = false;
         this.dictationBaseText = '';
+        this.dictationLang = 'en-IN';
+        this.accumulatedSessionText = '';
+        this.currentSessionFinal = '';
+        this.currentSessionInterim = '';
         this.sessionFinalText = '';
         this.currentInterimText = '';
         this.shouldRestartRecognition = false;
@@ -2733,48 +2742,40 @@
         rec.continuous = true;
         rec.interimResults = true;
         rec.maxAlternatives = 1;
-
-        // Default to en-IN for Indian expense splitting; fallback to browser lang
-        try {
-          rec.lang = 'en-IN';
-        } catch (e) {
-          rec.lang = navigator.language || 'en-US';
-        }
+        rec.lang = this.dictationLang || 'en-IN';
 
         rec.onstart = () => {
           this.isDictating = true;
-          this.updateDictationUI(true, 'Listening... speak now');
+          this.updateDictationUI(true, 'Sun rahe hain, boliye... (Listening)');
         };
 
         rec.onresult = (event) => {
-          let interim = '';
-          for (let i = event.resultIndex; i < event.results.length; ++i) {
-            const res = event.results[i];
-            if (res && res[0]) {
-              const transcript = res[0].transcript;
-              if (res.isFinal) {
-                const clean = transcript.trim();
-                if (clean) {
-                  this.sessionFinalText += (this.sessionFinalText ? ' ' : '') + clean;
-                }
-                this.currentInterimText = '';
+          let sessionFinal = '';
+          let sessionInterim = '';
+
+          for (let i = 0; i < event.results.length; ++i) {
+            const item = event.results[i];
+            if (item && item[0]) {
+              const text = item[0].transcript.trim();
+              if (item.isFinal) {
+                sessionFinal += (sessionFinal ? ' ' : '') + text;
               } else {
-                interim += transcript;
+                sessionInterim += (sessionInterim ? ' ' : '') + text;
               }
             }
           }
 
-          if (interim) {
-            this.currentInterimText = interim.trim();
-          }
+          this.currentSessionFinal = sessionFinal;
+          this.currentSessionInterim = sessionInterim;
 
           // Build live combined text
           const parts = [];
           if (this.dictationBaseText) parts.push(this.dictationBaseText);
-          if (this.sessionFinalText) parts.push(this.sessionFinalText);
-          if (this.currentInterimText) parts.push(this.currentInterimText);
+          if (this.accumulatedSessionText) parts.push(this.accumulatedSessionText);
+          if (sessionFinal) parts.push(sessionFinal);
+          if (sessionInterim) parts.push(sessionInterim);
 
-          const fullText = parts.join(' ').replace(/\s+/g, ' ');
+          const fullText = parts.join(' ').replace(/\s+/g, ' ').trim();
           const input = document.getElementById('story-input');
           if (input) {
             input.value = fullText;
@@ -2785,8 +2786,8 @@
 
           const liveEl = document.getElementById('dictate-live-transcript');
           if (liveEl) {
-            const preview = this.currentInterimText || this.sessionFinalText;
-            liveEl.textContent = preview ? `"${preview}"` : 'Listening...';
+            const preview = sessionInterim || sessionFinal || this.accumulatedSessionText;
+            liveEl.textContent = preview ? `"${preview}"` : 'Sun rahe hain, bindaas bolo...';
           }
         };
 
@@ -2794,18 +2795,17 @@
           console.warn('Speech recognition error event:', event.error);
 
           if (event.error === 'no-speech') {
-            // Harmless silence timeout in continuous mode; do not stop dictating
             const liveEl = document.getElementById('dictate-live-transcript');
-            if (liveEl) liveEl.textContent = 'Still listening... (waiting for speech)';
+            if (liveEl) liveEl.textContent = 'Waiting for speech... (Awaz nahi aayi, boliye)';
             return;
           }
 
           if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
             this.shouldRestartRecognition = false;
             if (window.location.protocol === 'file:') {
-              this.showToast('Microphone is blocked by browser on file:// URLs. Please run a local web server (e.g. npx serve) or use the live GitHub Pages link.', 'error');
+              this.showToast('Microphone is blocked by browser on file:// URLs. Please test on the live GitHub Pages link.', 'error');
             } else {
-              this.showToast('Microphone access blocked. Please click the lock icon in your address bar and set Microphone to "Allow".', 'error');
+              this.showToast('Microphone access blocked. Click the lock/tune icon in your address bar and set Microphone to "Allow".', 'error');
             }
             this.stopDictation(false);
             return;
@@ -2813,14 +2813,14 @@
 
           if (event.error === 'network') {
             this.shouldRestartRecognition = false;
-            this.showToast('Speech recognition network error. Chrome voice dictation requires an internet connection.', 'error');
+            this.showToast('Speech recognition network error. Please check your internet connection.', 'error');
             this.stopDictation(false);
             return;
           }
 
           if (event.error === 'audio-capture') {
             this.shouldRestartRecognition = false;
-            this.showToast('No microphone found. Please connect a microphone and reload.', 'error');
+            this.showToast('No microphone found. Please check your mic connection in Windows settings.', 'error');
             this.stopDictation(false);
             return;
           }
@@ -2829,19 +2829,23 @@
             return;
           }
 
-          // Other non-fatal errors: attempt restart if still dictating
           if (this.isDictating && this.shouldRestartRecognition) {
             this.scheduleRecognitionRestart();
           }
         };
 
         rec.onend = () => {
-          // If browser closed the session due to pause or timeout, restart if user didn't stop it
-          if (this.isDictating && this.shouldRestartRecognition) {
-            if (this.currentInterimText) {
-              this.sessionFinalText += (this.sessionFinalText ? ' ' : '') + this.currentInterimText;
-              this.currentInterimText = '';
+          // Commit current session segment to accumulatedSessionText
+          if (this.currentSessionFinal || this.currentSessionInterim) {
+            const chunk = (this.currentSessionFinal + ' ' + this.currentSessionInterim).trim();
+            if (chunk) {
+              this.accumulatedSessionText += (this.accumulatedSessionText ? ' ' : '') + chunk;
             }
+            this.currentSessionFinal = '';
+            this.currentSessionInterim = '';
+          }
+
+          if (this.isDictating && this.shouldRestartRecognition) {
             this.scheduleRecognitionRestart();
           } else {
             this.updateDictationUI(false);
@@ -2867,7 +2871,7 @@
               console.warn('Speech recognition restart failed:', e);
             }
           }
-        }, 200);
+        }, 150);
       }
 
       toggleDictation() {
@@ -2878,7 +2882,19 @@
         }
       }
 
-      startDictation() {
+      toggleSpeechLang() {
+        this.dictationLang = (this.dictationLang === 'hi-IN') ? 'en-IN' : 'hi-IN';
+        const label = document.getElementById('speech-lang-text');
+        if (label) {
+          label.textContent = (this.dictationLang === 'hi-IN') ? 'hi-IN (हिंदी / Hindi)' : 'en-IN (English/Hinglish)';
+        }
+        this.showToast(`Voice language set to: ${this.dictationLang === 'hi-IN' ? 'Hindi (हिंदी)' : 'English/Hinglish'}`, 'info');
+        if (this.isDictating) {
+          this.scheduleRecognitionRestart();
+        }
+      }
+
+      async startDictation() {
         const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRec) {
           this.showToast('Voice dictation is not supported by your browser. Please use Google Chrome, Microsoft Edge, or Safari.', 'error');
@@ -2886,13 +2902,29 @@
         }
 
         if (window.location.protocol === 'file:') {
-          this.showToast('Note: Browsers block microphones on local file:// URLs. Please run a local web server (npx serve) or test on GitHub Pages.', 'info');
+          this.showToast('Note: Browsers block microphones on local file:// URLs. Please test on the live GitHub Pages link.', 'info');
+        }
+
+        // Explicitly test/prompt microphone permission via getUserMedia
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            // Release the stream immediately so SpeechRecognition can bind cleanly
+            stream.getTracks().forEach(t => t.stop());
+          } catch (micErr) {
+            console.warn('getUserMedia mic check:', micErr);
+            if (micErr.name === 'NotAllowedError' || micErr.name === 'PermissionDeniedError') {
+              this.showToast('Microphone access blocked! Click the lock/tune icon in your browser address bar and set Microphone to "Allow".', 'error');
+              return;
+            }
+          }
         }
 
         const input = document.getElementById('story-input');
         this.dictationBaseText = input ? input.value.trim() : '';
-        this.sessionFinalText = '';
-        this.currentInterimText = '';
+        this.accumulatedSessionText = '';
+        this.currentSessionFinal = '';
+        this.currentSessionInterim = '';
         this.shouldRestartRecognition = true;
         this.isDictating = true;
 
@@ -2905,13 +2937,13 @@
 
         try {
           this.speechRecognition.start();
-          this.updateDictationUI(true, 'Initializing microphone...');
+          this.updateDictationUI(true, 'Mic active... bolo bindaas 🎙️');
         } catch (e) {
           console.error('Failed to start speech recognition:', e);
           this.isDictating = false;
           this.shouldRestartRecognition = false;
           this.updateDictationUI(false);
-          this.showToast('Could not start speech recognition: ' + (e.message || e), 'error');
+          this.showToast('Speech recognition error: ' + (e.message || e), 'error');
         }
       }
 
@@ -2930,8 +2962,9 @@
         // Commit all remaining text
         const parts = [];
         if (this.dictationBaseText) parts.push(this.dictationBaseText);
-        if (this.sessionFinalText) parts.push(this.sessionFinalText);
-        if (this.currentInterimText) parts.push(this.currentInterimText);
+        if (this.accumulatedSessionText) parts.push(this.accumulatedSessionText);
+        if (this.currentSessionFinal) parts.push(this.currentSessionFinal);
+        if (this.currentSessionInterim) parts.push(this.currentSessionInterim);
 
         const fullText = parts.join(' ').replace(/\s+/g, ' ').trim();
         const input = document.getElementById('story-input');
@@ -2940,18 +2973,18 @@
         }
         this.outing.story = fullText;
 
-        const capturedWords = (this.sessionFinalText + ' ' + this.currentInterimText).trim();
-        this.currentInterimText = '';
-        this.sessionFinalText = '';
+        const capturedWords = (this.accumulatedSessionText + ' ' + this.currentSessionFinal + ' ' + this.currentSessionInterim).trim();
+        this.accumulatedSessionText = '';
+        this.currentSessionFinal = '';
+        this.currentSessionInterim = '';
         this.dictationBaseText = '';
 
         this.updateStoryCounters();
         this.saveState();
-        this.checkDiscoveredStoryNames();
         this.updateDictationUI(false);
 
         if (showToastNotice && capturedWords) {
-          this.showToast('Voice dictation captured & saved!', 'success');
+          this.showToast('Voice dictation captured & saved! ✓', 'success');
         }
       }
 
@@ -3085,6 +3118,9 @@
 
         const stopDictateBtn = document.getElementById('btn-stop-dictation');
         if (stopDictateBtn) stopDictateBtn.addEventListener('click', () => this.stopDictation());
+
+        const toggleLangBtn = document.getElementById('btn-toggle-speech-lang');
+        if (toggleLangBtn) toggleLangBtn.addEventListener('click', () => this.toggleSpeechLang());
 
         // Sample Stories Dropdown
         const sampleBtn = document.getElementById('btn-sample-stories');
