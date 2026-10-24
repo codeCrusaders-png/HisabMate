@@ -1061,7 +1061,8 @@
      * HisabMate Front-End Controller
      * Powered by HisabMateEngine (v2.0)
      */
-    const { Money, Parser, Ledger, SettlementSolver, SettlementTracker, Storage } = window.HisabMateEngine;
+    const Engine = window.HisabMateEngine || {};
+    const { Money, Parser, Ledger, SettlementSolver, SettlementTracker, Storage, UPI, PdfGenerator } = Engine;
 
     class HisabMate {
       constructor() {
@@ -2132,7 +2133,8 @@
         }
 
         try {
-          const upiUri = Engine.UPI.buildPaymentUri({
+          const upiLib = (typeof UPI !== 'undefined' && UPI) || (typeof Engine !== 'undefined' && Engine.UPI) || (window.HisabMateEngine && window.HisabMateEngine.UPI);
+          const upiUri = upiLib.buildPaymentUri({
             payeeVpa: payeeUpi,
             payeeName: payeeName,
             amountRupees: amountRupees,
@@ -2163,7 +2165,8 @@
         }
 
         try {
-          const upiUri = Engine.UPI.buildPaymentUri({
+          const upiLib = (typeof UPI !== 'undefined' && UPI) || (typeof Engine !== 'undefined' && Engine.UPI) || (window.HisabMateEngine && window.HisabMateEngine.UPI);
+          const upiUri = upiLib.buildPaymentUri({
             payeeVpa: payeeUpi,
             payeeName: payeeName,
             amountRupees: amountRupees,
@@ -2287,7 +2290,8 @@
         const newUpi = input ? input.value.trim() : '';
 
         if (newUpi) {
-          const check = Engine.UPI.validateUpiId(newUpi);
+          const upiLib = (typeof UPI !== 'undefined' && UPI) || (typeof Engine !== 'undefined' && Engine.UPI) || (window.HisabMateEngine && window.HisabMateEngine.UPI);
+          const check = upiLib ? upiLib.validateUpiId(newUpi) : { valid: true };
           if (!check.valid) {
             this.showToast(check.error || 'Invalid UPI ID format. Expected user@bank or phone@upi', 'error');
             if (input) input.focus();
@@ -2326,10 +2330,22 @@
 
         setTimeout(() => {
           try {
-            if (typeof jspdf === 'undefined' && typeof window.jspdf === 'undefined') {
-              throw new Error('PDF generator library is loading. Please try again.');
+            const pdfGen = (typeof PdfGenerator !== 'undefined' && PdfGenerator) || 
+                           (typeof Engine !== 'undefined' && Engine.PdfGenerator) || 
+                           (window.HisabMateEngine && window.HisabMateEngine.PdfGenerator) ||
+                           (window.Engine && window.Engine.PdfGenerator);
+
+            if (!pdfGen) {
+              throw new Error('HisabMate Engine PDF module not loaded. Please refresh the page.');
             }
-            const { doc, filename } = Engine.PdfGenerator.downloadPdf(this.outing, this.settlementResult);
+
+            const jsPdfClass = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF || (typeof jsPDF !== 'undefined' ? jsPDF : null);
+            if (!jsPdfClass) {
+              throw new Error('PDF generator library is loading. Please check internet connection.');
+            }
+
+            const autoTableFn = (window.jspdf && window.jspdf.autoTable) || window.autoTable || (typeof autoTable !== 'undefined' ? autoTable : null);
+            const { doc, filename } = pdfGen.downloadPdf(this.outing, this.settlementResult, jsPdfClass, autoTableFn);
             this.showToast(`PDF Bill downloaded! 📄`, 'success');
           } catch (err) {
             console.error('PDF Generation failed:', err);

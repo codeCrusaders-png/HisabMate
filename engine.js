@@ -14,6 +14,7 @@
     module.exports = factory();
   } else {
     root.HisabMateEngine = factory();
+    root.Engine = root.HisabMateEngine;
   }
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
@@ -1694,15 +1695,36 @@
   },
 
   buildPdfDocument(outing, settlementResult, jsPdfLib, autoTablePlugin) {
+    let JsPdfClass = jsPdfLib;
+    if (!JsPdfClass && typeof window !== 'undefined') {
+      if (window.jspdf && window.jspdf.jsPDF) {
+        JsPdfClass = window.jspdf.jsPDF;
+      } else if (typeof window.jsPDF === 'function') {
+        JsPdfClass = window.jsPDF;
+      } else if (typeof jsPDF === 'function') {
+        JsPdfClass = jsPDF;
+      }
+    }
+    if (!JsPdfClass) {
+      throw new Error('jsPDF library is not loaded. Cannot generate PDF bill.');
+    }
+
     const data = this.preparePdfData(outing, settlementResult);
-    const doc = new jsPdfLib({
+    const doc = new JsPdfClass({
       orientation: 'portrait',
       unit: 'mm',
       format: 'a4',
       putOnlyUsedFonts: true
     });
 
-    const autoTable = autoTablePlugin || (doc.autoTable ? doc.autoTable.bind(doc) : null);
+    let autoTable = autoTablePlugin;
+    if (!autoTable) {
+      if (typeof doc.autoTable === 'function') {
+        autoTable = (d, opts) => d.autoTable(opts);
+      } else if (typeof window !== 'undefined' && window.jspdf && typeof window.jspdf.autoTable === 'function') {
+        autoTable = window.jspdf.autoTable;
+      }
+    }
     if (!autoTable) {
       throw new Error('jspdf-autotable plugin is required for PDF bill generation.');
     }
@@ -2054,6 +2076,13 @@
     }
 
     return doc;
+  },
+
+  downloadPdf(outing, settlementResult, jsPdfLib, autoTablePlugin) {
+    const doc = this.buildPdfDocument(outing, settlementResult, jsPdfLib, autoTablePlugin);
+    const filename = this.formatFilename(outing.title, outing.date);
+    doc.save(filename);
+    return { doc, filename };
   }
 };
 
