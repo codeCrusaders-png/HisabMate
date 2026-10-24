@@ -1763,21 +1763,31 @@
     const hash = Math.abs((data.title || 'Outing').split('').reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0) % 9000 + 1000);
     const statementRef = `HM-${dateCode}-${hash}`;
 
-    // --- BRAND HEADER ---
+    // --- BRAND HEADER WITH OFFICIAL LOGO ---
+    let titleStartX = margin;
+    try {
+      if (typeof doc.addImage === 'function' && typeof HISABMATE_LOGO_DATA_URI !== 'undefined') {
+        doc.addImage(HISABMATE_LOGO_DATA_URI, 'PNG', margin, 11, 12, 12);
+        titleStartX = margin + 14.5;
+      }
+    } catch (e) {
+      titleStartX = margin;
+    }
+
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(19);
     doc.setTextColor(15, 23, 42); // slate obsidian
-    doc.text('HisabMate', margin, curY);
+    doc.text('HisabMate', titleStartX, 16);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(71, 85, 105);
-    doc.text('Commercial Expense Settlement Statement', margin, curY + 4.5);
+    doc.text('Commercial Expense Settlement Statement', titleStartX, 20.5);
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(15, 23, 42);
-    doc.text(`Outing: ${data.title}`, margin, curY + 9);
+    doc.text(`Outing: ${data.title}`, titleStartX, 24.5);
 
     // Right: Commercial Metadata Block
     const rightX = pageWidth - margin;
@@ -1788,11 +1798,11 @@
     const outingDateText = `Outing Date: ${data.date}`;
     const genDateText = `Billing Date: ${data.generatedAt}`;
 
-    doc.text(refText, rightX - doc.getTextWidth(refText), curY);
-    doc.text(outingDateText, rightX - doc.getTextWidth(outingDateText), curY + 4.2);
-    doc.text(genDateText, rightX - doc.getTextWidth(genDateText), curY + 8.4);
+    doc.text(refText, rightX - doc.getTextWidth(refText), 15);
+    doc.text(outingDateText, rightX - doc.getTextWidth(outingDateText), 19.2);
+    doc.text(genDateText, rightX - doc.getTextWidth(genDateText), 23.4);
 
-    curY += 13;
+    curY = 27.5;
 
     // Thin Accent Line
     doc.setDrawColor(226, 232, 240);
