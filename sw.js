@@ -3,7 +3,7 @@
  * Cache-first offline execution for zero-cloud expense ledger
  */
 
-const CACHE_NAME = 'hisabmate-v2.1.6';
+const CACHE_NAME = 'hisabmate-v2.2.0';
 
 const PRECACHE_ASSETS = [
   './',
@@ -15,6 +15,8 @@ const PRECACHE_ASSETS = [
   './icon-512.png',
   'https://cdn.tailwindcss.com',
   'https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js',
+  'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',
+  'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js',
   'https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap'
 ];
 

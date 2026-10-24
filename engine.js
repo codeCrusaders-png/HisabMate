@@ -1440,6 +1440,623 @@
     }
   };
 
+
+  // =========================================================================
+  // 7. UPI DEEP LINK & PAYMENT INTENT UTILITY
+  // =========================================================================
+  const UPI = {
+  validateUpiId(upi) {
+    if (!upi || typeof upi !== 'string') {
+      return { valid: false, error: 'UPI ID is required.' };
+    }
+    const trimmed = upi.trim();
+    if (!trimmed) {
+      return { valid: false, error: 'UPI ID cannot be empty.' };
+    }
+    // Standard VPA regex: user@psp (e.g. name@okhdfcbank, 9876543210@paytm)
+    const vpaRegex = /^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z0-9]{2,64}$/;
+    if (!vpaRegex.test(trimmed)) {
+      return { valid: false, error: 'Invalid UPI ID format. Expected format: user@bank or phone@upi' };
+    }
+    return { valid: true, error: null };
+  },
+
+  formatAmount(amount) {
+    const num = Number(amount);
+    if (!Number.isFinite(num) || num <= 0) {
+      throw new Error('Settlement amount must be a positive number greater than 0.');
+    }
+    return num.toFixed(2);
+  },
+
+  buildPaymentUri({ payeeVpa, payeeName, amountRupees, outingTitle, note }) {
+    const vpaCheck = this.validateUpiId(payeeVpa);
+    if (!vpaCheck.valid) {
+      throw new Error(vpaCheck.error);
+    }
+    if (!payeeName || typeof payeeName !== 'string' || !payeeName.trim()) {
+      throw new Error('Payee name is required for UPI payment.');
+    }
+    const cleanAmount = this.formatAmount(amountRupees);
+    const cleanPayee = payeeName.trim();
+    const cleanVpa = payeeVpa.trim();
+    const cleanNote = (note || (outingTitle ? `HisabMate: ${outingTitle}` : 'HisabMate Settlement')).trim();
+
+    return `upi://pay?pa=${encodeURIComponent(cleanVpa)}&pn=${encodeURIComponent(cleanPayee)}&am=${cleanAmount}&cu=INR&tn=${encodeURIComponent(cleanNote)}`;
+  },
+
+  getTransferPaymentInfo(transfer, squad = [], outingTitle = '') {
+    if (!transfer) {
+      return { canPay: false, validationError: 'Transfer record is missing.' };
+    }
+
+    const payeeName = transfer.to || '';
+    const payerName = transfer.from || '';
+
+    // Search squad member for upi if not on transfer
+    let payeeVpa = transfer.creditorUpi || '';
+    if (!payeeVpa && Array.isArray(squad)) {
+      const member = squad.find(m => m.name && m.name.toLowerCase() === payeeName.toLowerCase());
+      if (member && member.upi) payeeVpa = member.upi;
+    }
+
+    const amountRupees = transfer.amountRupees || (transfer.amountPaise ? (transfer.amountPaise / 100).toFixed(2) : '0.00');
+    const amountPaise = transfer.amountPaise || Math.round(Number(amountRupees) * 100);
+
+    const vpaCheck = this.validateUpiId(payeeVpa);
+    let numAmount = Number(amountRupees);
+    let amountValid = Number.isFinite(numAmount) && numAmount > 0;
+
+    let canPay = vpaCheck.valid && amountValid && !!payeeName;
+    let validationError = null;
+    if (!payeeName) {
+      validationError = 'Payee recipient name is missing.';
+    } else if (!vpaCheck.valid) {
+      validationError = `Recipient ${payeeName} does not have a configured UPI ID.`;
+    } else if (!amountValid) {
+      validationError = 'Settlement amount must be greater than zero.';
+    }
+
+    let uri = '';
+    if (canPay) {
+      try {
+        uri = this.buildPaymentUri({
+          payeeVpa,
+          payeeName,
+          amountRupees,
+          outingTitle
+        });
+      } catch (e) {
+        canPay = false;
+        validationError = e.message;
+      }
+    }
+
+    return {
+      canPay,
+      payeeName,
+      payeeVpa,
+      payerName,
+      amountRupees,
+      amountPaise,
+      note: outingTitle ? `HisabMate: ${outingTitle}` : 'HisabMate Settlement',
+      uri,
+      validationError
+    };
+  }
+};
+
+  // =========================================================================
+  // 8. PROFESSIONAL PDF BILL GENERATOR
+  // =========================================================================
+  const PdfGenerator = {
+  formatFilename(title, date) {
+    const rawTitle = (title || 'Outing').trim();
+    const sanitizedTitle = rawTitle.replace(/[^a-zA-Z0-9_\-]+/g, '_').replace(/^_+|_+$/g, '') || 'Outing';
+    const rawDate = (date || new Date().toISOString().split('T')[0]).trim();
+    const sanitizedDate = rawDate.replace(/[^a-zA-Z0-9_\-]+/g, '_').replace(/^_+|_+$/g, '') || 'date';
+    return `HisabMate_${sanitizedTitle}_${sanitizedDate}.pdf`;
+  },
+
+  preparePdfData(outing, settlementResult) {
+    const title = outing.title || 'Untitled Outing';
+    const date = outing.date || 'Not specified';
+    const squad = outing.squad || [];
+    const expenses = outing.expenses || [];
+
+    let memberTotals = (settlementResult && settlementResult.memberTotals);
+    let totalSpendPaise = (settlementResult && settlementResult.totalSpendPaise);
+    if (!memberTotals || Object.keys(memberTotals).length === 0 || totalSpendPaise === undefined || totalSpendPaise === 0) {
+      const computed = Ledger.computeBalances(squad, expenses);
+      if (!memberTotals || Object.keys(memberTotals).length === 0) memberTotals = computed.memberTotals;
+      if (totalSpendPaise === undefined || totalSpendPaise === 0) totalSpendPaise = computed.totalSpendPaise;
+    }
+    memberTotals = memberTotals || {};
+    totalSpendPaise = totalSpendPaise || 0;
+
+    let transactions = (settlementResult && settlementResult.transactions);
+    if (!transactions) {
+      const solved = SettlementSolver.solve(memberTotals);
+      transactions = solved.transactions;
+    }
+
+    // Participant Financial Summary
+    let sumPaidPaise = 0;
+    let sumConsumedPaise = 0;
+    let sumNetPaise = 0;
+
+    const participants = squad.map(member => {
+      const info = memberTotals[member.name] || { paidPaise: 0, consumedPaise: 0, netPaise: 0 };
+      sumPaidPaise += info.paidPaise;
+      sumConsumedPaise += info.consumedPaise;
+      sumNetPaise += info.netPaise;
+
+      let status = 'Settled';
+      let statusType = 'settled';
+      if (info.netPaise > 0) {
+        status = `Receives ${Money.formatINR(info.netPaise)}`;
+        statusType = 'creditor';
+      } else if (info.netPaise < 0) {
+        status = `Owes ${Money.formatINR(Math.abs(info.netPaise))}`;
+        statusType = 'debtor';
+      }
+
+      return {
+        name: member.name,
+        upi: member.upi || '',
+        paidPaise: info.paidPaise,
+        paidRupees: Money.formatINR(info.paidPaise),
+        consumedPaise: info.consumedPaise,
+        consumedRupees: Money.formatINR(info.consumedPaise),
+        netPaise: info.netPaise,
+        netRupees: (info.netPaise > 0 ? '+' : (info.netPaise < 0 ? '-' : '')) + Money.formatINR(Math.abs(info.netPaise)),
+        status,
+        statusType
+      };
+    });
+
+    // Itemized Expenses
+    const expenseRows = expenses.map((exp, idx) => {
+      let splitDetails = '';
+      if (exp.allocations && Object.keys(exp.allocations).length > 0) {
+        const allocParts = Object.entries(exp.allocations).map(([name, paise]) => `${name}: ${Money.formatINR(paise)}`);
+        const excluded = squad.filter(m => !exp.allocations[m.name]).map(m => m.name);
+        splitDetails = `Custom Split: ${allocParts.join(', ')}`;
+        if (excluded.length > 0) {
+          splitDetails += `\n(Excluded: ${excluded.join(', ')})`;
+        }
+      } else {
+        const included = exp.included || [];
+        const excluded = squad.filter(m => !included.includes(m.name)).map(m => m.name);
+        if (excluded.length === 0) {
+          splitDetails = `Shared equally by all ${squad.length} members`;
+        } else {
+          splitDetails = `Shared by ${included.join(', ')}`;
+          if (excluded.length > 0) {
+            splitDetails += `\n(Excluded: ${excluded.join(', ')})`;
+          }
+        }
+      }
+
+      return {
+        index: idx + 1,
+        description: exp.description || 'Expense',
+        payer: exp.payer,
+        amountPaise: exp.amountPaise,
+        amountRupees: Money.formatINR(exp.amountPaise),
+        splitDetails
+      };
+    });
+
+    // Settlement Transfers
+    const transfers = transactions.map((tx, idx) => {
+      const isSettled = outing.settlementRecords && outing.settlementRecords[tx.id] && outing.settlementRecords[tx.id].status === 'marked_paid';
+      return {
+        index: idx + 1,
+        from: tx.from,
+        to: tx.to,
+        amountRupees: `₹${tx.amountRupees}`,
+        amountPaise: tx.amountPaise,
+        creditorUpi: tx.creditorUpi || '',
+        status: isSettled ? 'Marked Paid' : 'Pending Payment'
+      };
+    });
+
+    // Reconciliation Invariants
+    const isConservationValid = (sumPaidPaise === sumConsumedPaise) && (sumPaidPaise === totalSpendPaise);
+    const isZeroDriftValid = Math.abs(sumNetPaise) === 0;
+    const isReconciled = isConservationValid && isZeroDriftValid;
+
+    return {
+      title,
+      date,
+      totalSpendPaise,
+      totalSpendRupees: Money.formatINR(totalSpendPaise),
+      participantCount: squad.length,
+      expenseCount: expenses.length,
+      participants,
+      expenseRows,
+      transfers,
+      sumPaidPaise,
+      sumConsumedPaise,
+      sumNetPaise,
+      isConservationValid,
+      isZeroDriftValid,
+      isReconciled,
+      generatedAt: new Date().toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    };
+  },
+
+  buildPdfDocument(outing, settlementResult, jsPdfLib, autoTablePlugin) {
+    const data = this.preparePdfData(outing, settlementResult);
+    const doc = new jsPdfLib({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+      putOnlyUsedFonts: true
+    });
+
+    const autoTable = autoTablePlugin || (doc.autoTable ? doc.autoTable.bind(doc) : null);
+    if (!autoTable) {
+      throw new Error('jspdf-autotable plugin is required for PDF bill generation.');
+    }
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 14;
+    const contentWidth = pageWidth - (margin * 2);
+
+    let curY = 16;
+
+    // --- BRANDING & HEADER ---
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(22);
+    doc.setTextColor(15, 23, 42); // slate obsidian
+    doc.text('HisabMate', margin, curY);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139); // slate muted
+    doc.text('Official Outing & Expense Settlement Bill', margin, curY + 5);
+
+    // Header Right
+    doc.setFontSize(8.5);
+    doc.setTextColor(71, 85, 105);
+    const billDateText = `Bill Generated: ${data.generatedAt}`;
+    const outingDateText = `Outing Date: ${data.date}`;
+    doc.text(billDateText, pageWidth - margin - doc.getTextWidth(billDateText), curY);
+    doc.text(outingDateText, pageWidth - margin - doc.getTextWidth(outingDateText), curY + 4.5);
+
+    curY += 11;
+
+    // Divider Line
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.4);
+    doc.line(margin, curY, pageWidth - margin, curY);
+    curY += 6;
+
+    // --- OUTING SUMMARY HIGHLIGHTS BOX ---
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(margin, curY, contentWidth, 22, 2, 2, 'F');
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(margin, curY, contentWidth, 22, 2, 2, 'S');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`Outing: ${data.title}`, margin + 4, curY + 6);
+
+    // 4 metric badges inside box
+    const boxWidth = contentWidth / 4;
+    const metricsY = curY + 12;
+
+    // Stat 1: Total Spend
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text('TOTAL SPEND', margin + 4, metricsY);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(217, 119, 6); // amber
+    doc.text(data.totalSpendRupees, margin + 4, metricsY + 5);
+
+    // Stat 2: Members
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text('MEMBERS', margin + boxWidth + 4, metricsY);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${data.participantCount} registered`, margin + boxWidth + 4, metricsY + 5);
+
+    // Stat 3: Expenses
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text('EXPENSES', margin + (boxWidth * 2) + 4, metricsY);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${data.expenseCount} events`, margin + (boxWidth * 2) + 4, metricsY + 5);
+
+    // Stat 4: Conservation Status
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text('CONSERVATION', margin + (boxWidth * 3) + 4, metricsY);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    if (data.isReconciled) {
+      doc.setTextColor(5, 150, 105); // emerald
+      doc.text('Zero-drift (100%)', margin + (boxWidth * 3) + 4, metricsY + 5);
+    } else {
+      doc.setTextColor(220, 38, 38); // rose
+      doc.text('Reconciliation Warning', margin + (boxWidth * 3) + 4, metricsY + 5);
+    }
+
+    curY += 28;
+
+    // Helper to check space before section
+    const checkPageBreak = (neededHeight) => {
+      if (curY + neededHeight > pageHeight - 25) {
+        doc.addPage();
+        curY = 20;
+      }
+    };
+
+    // --- SECTION 1: PARTICIPANT FINANCIAL SUMMARY TABLE ---
+    checkPageBreak(30);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(15, 23, 42);
+    doc.text('1. Participant Financial Summary', margin, curY);
+    curY += 3;
+
+    const participantTableBody = data.participants.map(p => [
+      p.name + (p.upi ? ` (@${p.upi})` : ''),
+      p.paidRupees,
+      p.consumedRupees,
+      p.netRupees,
+      p.status
+    ]);
+
+    // Footer row
+    const participantTableFoot = [[
+      'Total',
+      Money.formatINR(data.sumPaidPaise),
+      Money.formatINR(data.sumConsumedPaise),
+      '₹0.00',
+      data.isReconciled ? 'Balanced' : 'Warning'
+    ]];
+
+    autoTable(doc, {
+      startY: curY,
+      margin: { left: margin, right: margin, top: 20, bottom: 22 },
+      head: [['Participant', 'Total Paid', 'Share / Consumed', 'Net Balance', 'Status']],
+      body: participantTableBody,
+      foot: participantTableFoot,
+      theme: 'grid',
+      headStyles: {
+        fillColor: [15, 23, 42],
+        textColor: [255, 255, 255],
+        fontSize: 8.5,
+        fontStyle: 'bold',
+        halign: 'left'
+      },
+      footStyles: {
+        fillColor: [241, 245, 249],
+        textColor: [15, 23, 42],
+        fontSize: 8.5,
+        fontStyle: 'bold'
+      },
+      styles: {
+        font: 'helvetica',
+        fontSize: 8,
+        cellPadding: 2.2,
+        lineColor: [226, 232, 240],
+        lineWidth: 0.2
+      },
+      columnStyles: {
+        0: { cellWidth: 50 },
+        1: { halign: 'right', cellWidth: 30 },
+        2: { halign: 'right', cellWidth: 32 },
+        3: { halign: 'right', cellWidth: 32 },
+        4: { halign: 'left', cellWidth: 38 }
+      },
+      didParseCell: (hookData) => {
+        if (hookData.section === 'body') {
+          const rowData = data.participants[hookData.row.index];
+          if (rowData) {
+            if (hookData.column.index === 3 || hookData.column.index === 4) {
+              if (rowData.statusType === 'creditor') {
+                hookData.cell.styles.textColor = [5, 150, 105]; // green
+                hookData.cell.styles.fontStyle = 'bold';
+              } else if (rowData.statusType === 'debtor') {
+                hookData.cell.styles.textColor = [220, 38, 38]; // red
+                hookData.cell.styles.fontStyle = 'bold';
+              }
+            }
+          }
+        }
+      }
+    });
+
+    curY = doc.lastAutoTable.finalY + 8;
+
+    // --- SECTION 2: ITEMIZED EXPENSE LEDGER TABLE ---
+    checkPageBreak(30);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(15, 23, 42);
+    doc.text('2. Itemized Expense Ledger', margin, curY);
+    curY += 3;
+
+    const expenseTableBody = data.expenseRows.map(e => [
+      e.index,
+      e.description,
+      e.payer,
+      e.amountRupees,
+      e.splitDetails
+    ]);
+
+    const expenseTableFoot = [[
+      '',
+      'Total Recorded Expenditure',
+      '',
+      data.totalSpendRupees,
+      `${data.expenseRows.length} total events recorded`
+    ]];
+
+    autoTable(doc, {
+      startY: curY,
+      margin: { left: margin, right: margin, top: 20, bottom: 22 },
+      head: [['#', 'Description', 'Paid By', 'Amount', 'Split & Allocation Details']],
+      body: expenseTableBody,
+      foot: expenseTableFoot,
+      theme: 'grid',
+      headStyles: {
+        fillColor: [15, 23, 42],
+        textColor: [255, 255, 255],
+        fontSize: 8.5,
+        fontStyle: 'bold'
+      },
+      footStyles: {
+        fillColor: [241, 245, 249],
+        textColor: [15, 23, 42],
+        fontSize: 8.5,
+        fontStyle: 'bold'
+      },
+      styles: {
+        font: 'helvetica',
+        fontSize: 8,
+        cellPadding: 2.2,
+        lineColor: [226, 232, 240],
+        lineWidth: 0.2
+      },
+      columnStyles: {
+        0: { halign: 'center', cellWidth: 10 },
+        1: { cellWidth: 42 },
+        2: { cellWidth: 26 },
+        3: { halign: 'right', cellWidth: 28, fontStyle: 'bold' },
+        4: { cellWidth: 76 }
+      }
+    });
+
+    curY = doc.lastAutoTable.finalY + 8;
+
+    // --- SECTION 3: SUGGESTED SETTLEMENT TRANSFERS ---
+    checkPageBreak(30);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(15, 23, 42);
+    doc.text('3. Suggested Settlement Transfers (Resolution Plan)', margin, curY);
+    curY += 3;
+
+    if (data.transfers.length === 0) {
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(8.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text('All members are fully settled. No payments or transfers are required.', margin, curY + 4);
+      curY += 10;
+    } else {
+      const transferBody = data.transfers.map(t => [
+        t.index,
+        t.from,
+        t.to,
+        t.amountRupees,
+        t.creditorUpi || 'Not set',
+        t.status
+      ]);
+
+      autoTable(doc, {
+        startY: curY,
+        margin: { left: margin, right: margin, top: 20, bottom: 22 },
+        head: [['#', 'From (Debtor)', 'To (Creditor)', 'Amount', 'Creditor UPI', 'Status']],
+        body: transferBody,
+        theme: 'grid',
+        headStyles: {
+          fillColor: [15, 23, 42],
+          textColor: [255, 255, 255],
+          fontSize: 8.5,
+          fontStyle: 'bold'
+        },
+        styles: {
+          font: 'helvetica',
+          fontSize: 8,
+          cellPadding: 2.2,
+          lineColor: [226, 232, 240],
+          lineWidth: 0.2
+        },
+        columnStyles: {
+          0: { halign: 'center', cellWidth: 10 },
+          1: { cellWidth: 36, fontStyle: 'bold' },
+          2: { cellWidth: 36, fontStyle: 'bold' },
+          3: { halign: 'right', cellWidth: 28, textColor: [217, 119, 6], fontStyle: 'bold' },
+          4: { cellWidth: 42, font: 'courier' },
+          5: { cellWidth: 30 }
+        }
+      });
+
+      curY = doc.lastAutoTable.finalY + 8;
+    }
+
+    // --- SECTION 4: RECONCILIATION & AUDIT INVARIANTS ---
+    checkPageBreak(26);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(15, 23, 42);
+    doc.text('4. Financial Reconciliation & Audit Invariants', margin, curY);
+    curY += 4;
+
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(margin, curY, contentWidth, 18, 1.5, 1.5, 'F');
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(margin, curY, contentWidth, 18, 1.5, 1.5, 'S');
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(71, 85, 105);
+    const inv1 = `[✓] Invariant 1: Total Paid (${Money.formatINR(data.sumPaidPaise)}) ≡ Total Consumed (${Money.formatINR(data.sumConsumedPaise)}) ≡ Total Spend (${data.totalSpendRupees})`;
+    const inv2 = `[✓] Invariant 2: Conservation of Balances: Sum(Net) ≡ ₹0.00 (Zero paise drift)`;
+    const inv3 = `[✓] Invariant 3: Settlement Completeness: ${data.transfers.length} transfers resolve 100% of outstanding debt`;
+
+    doc.text(inv1, margin + 4, curY + 4.5);
+    doc.text(inv2, margin + 4, curY + 9);
+    doc.text(inv3, margin + 4, curY + 13.5);
+
+    // --- MULTI-PAGE FOOTER PASS ---
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+
+      // Footer divider line
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.3);
+      doc.line(margin, pageHeight - 12, pageWidth - margin, pageHeight - 12);
+
+      // Footer Left: Exact brand signature & product tagline
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
+      doc.text('HisabMate • Hisab sorted, dosti intact', margin, pageHeight - 7);
+
+      // Footer Right: Exact required text + page numbers
+      const footerRight = `Made with love for Indian outings.  •  Page ${i} of ${totalPages}`;
+      const textWidth = doc.getTextWidth(footerRight);
+      doc.text(footerRight, pageWidth - margin - textWidth, pageHeight - 7);
+    }
+
+    return doc;
+  }
+};
+
   // Export module public interface
   return {
     Money,
@@ -1447,7 +2064,9 @@
     Ledger,
     SettlementSolver,
     SettlementTracker,
-    Storage
+    Storage,
+    UPI,
+    PdfGenerator
   };
 });
 

@@ -16,6 +16,9 @@
     "india"
   ],
   "author": "Code Crusaders",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.9"
+  }
 }
-

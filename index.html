@@ -66,6 +66,9 @@
   
   <!-- QRCode.js via CDN for instant UPI payment QR generation -->
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <!-- jsPDF & AutoTable via CDN for client-side PDF bill generation -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 
   <!-- Core Financial & Parsing Engine (Zero-drift, Subset-Partition DP, NLP) -->
   <script src="./engine.js"></script>
@@ -624,10 +627,10 @@
             <span>💬 WhatsApp pe Bhejo</span>
           </button>
 
-          <!-- Export CSV Button -->
-          <button id="btn-export-csv" aria-label="Export safe CSV spreadsheet" 
-                  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surfaceLight border border-surfaceBorder hover:border-slate-500 text-slate-300 text-xs font-semibold transition active:scale-95 shadow-sm">
-            <span>📥 Excel/CSV</span>
+          <!-- Download PDF Bill Button -->
+          <button id="btn-download-pdf" aria-label="Download PDF Bill" 
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amberGlow hover:bg-amber-400 text-obsidian text-xs font-bold transition active:scale-95 shadow-sm">
+            <span>📄 Download PDF Bill</span>
           </button>
 
           <!-- Copy Raw Text Summary -->
@@ -868,13 +871,18 @@
         <div class="text-slate-400">Amount: <span id="qr-payee-amount" class="font-mono font-bold text-emeraldMint text-base"></span></div>
       </div>
 
+      <div class="text-[10px] text-slate-400 my-2 p-2 rounded-lg bg-surfaceLight/60 border border-surfaceBorder text-left">
+        💡 <strong class="text-slate-300">Note:</strong> Mobile users can tap "Open UPI App" below. Desktop users can scan this QR code with any UPI app on phone, or copy the payment link.
+      </div>
+
       <div class="flex flex-col gap-2">
         <a id="qr-direct-link" href="#" class="w-full py-2.5 rounded-xl bg-emeraldMint hover:bg-emeraldMintDark text-obsidian font-bold text-xs transition flex items-center justify-center gap-1.5">
-          <span>📲 Direct UPI App Kholo</span>
+          <span>📲 Open UPI App</span>
         </a>
-        <button onclick="app.copyQrIntent()" class="w-full py-2 rounded-xl bg-surfaceLight hover:bg-surfaceHover text-slate-300 text-xs font-semibold transition border border-surfaceBorder">
-          Copy Payment Link
+        <button onclick="app.copyQrIntent()" class="w-full py-2 rounded-xl bg-surfaceLight hover:bg-surfaceHover text-slate-300 text-xs font-semibold transition border border-surfaceBorder flex items-center justify-center gap-1.5">
+          <span>📋 Copy Payment Link</span>
         </button>
+        <p class="text-[10px] text-slate-500 mt-1">Opening or copying does not alter balances. Click "✓ Mark Paid" after settling.</p>
       </div>
     </div>
   </div>
@@ -1031,8 +1039,8 @@
           Invariant 1: <span class="text-emeraldMint font-bold">Σ(Paid) ≡ Σ(Consumed)</span> • Invariant 2: <span class="text-emeraldMint font-bold">Σ(Net) ≡ 0</span>
         </div>
         <div class="flex items-center gap-2">
-          <button onclick="app.exportCSV()" class="px-3.5 py-1.5 rounded-lg bg-surfaceLight border border-surfaceBorder hover:border-slate-500 text-slate-200 font-semibold transition">
-            Download CSV
+          <button onclick="app.downloadPdfBill()" class="px-3.5 py-1.5 rounded-lg bg-amberGlow hover:bg-amber-400 text-obsidian font-bold transition">
+            Download PDF Bill
           </button>
           <button onclick="app.exportJSON()" class="px-3.5 py-1.5 rounded-lg bg-surfaceLight border border-surfaceBorder hover:border-slate-500 text-slate-200 font-semibold transition">
             Export JSON
@@ -1815,6 +1823,8 @@
                     ${paymentsToMake.map(pay => {
                       const isSettled = this.outing.settlementRecords[pay.id] && this.outing.settlementRecords[pay.id].status === 'marked_paid';
                       const record = this.outing.settlementRecords[pay.id];
+                      const creditorUpi = pay.creditorUpi || (squad.find(m => m.name.toLowerCase() === pay.to.toLowerCase())?.upi) || '';
+                      const hasRecipientUpi = !!creditorUpi;
 
                       return `
                         <div class="p-3 rounded-xl ${isSettled ? 'bg-emeraldMint/10 border-emeraldMint/30' : 'bg-rose-500/5 border-rose-500/20'} border flex flex-col gap-2">
@@ -1825,7 +1835,7 @@
                                 <strong class="text-white">${Storage.sanitize(pay.to)}:</strong>
                                 <span class="font-mono font-bold ${isSettled ? 'text-emeraldMint' : 'text-rose-300'}">₹${pay.amountRupees}</span>
                               </div>
-                              ${pay.creditorUpi ? `<div class="text-[10px] font-mono text-slate-400 mt-0.5">UPI: ${Storage.sanitize(pay.creditorUpi)}</div>` : ''}
+                              ${creditorUpi ? `<div class="text-[10px] font-mono text-slate-400 mt-0.5">UPI: ${Storage.sanitize(creditorUpi)}</div>` : ''}
                               ${isSettled ? `<div class="text-[10px] text-emeraldMint/80 mt-1">✓ Self-reported paid at ${new Date(record.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>` : ''}
                             </div>
 
@@ -1841,16 +1851,37 @@
                           </div>
 
                           ${!isSettled ? `
-                            <div class="flex items-center gap-2 mt-1">
-                              <button onclick="app.triggerUpiPayment('${Storage.sanitize(pay.to)}', '${pay.amountRupees}', '${Storage.sanitize(pay.creditorUpi)}')" 
-                                      class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-emeraldMint hover:bg-emeraldMintDark text-obsidian font-bold text-xs shadow-sm transition active:scale-95 whitespace-nowrap">
-                                <span>📲 Pay via UPI</span>
-                              </button>
-                              <button onclick="app.copyPaymentDetails('${Storage.sanitize(pay.from)}', '${Storage.sanitize(pay.to)}', '${pay.amountRupees}', '${Storage.sanitize(pay.creditorUpi)}')" 
-                                      aria-label="Copy payment details" class="px-2.5 py-1.5 rounded-lg bg-surfaceLight hover:bg-surfaceHover text-slate-300 text-xs font-semibold border border-surfaceBorder transition" title="Copy payment instruction">
-                                📋
-                              </button>
-                            </div>
+                            ${hasRecipientUpi ? `
+                              <div class="flex items-center gap-2 mt-1">
+                                <button onclick="app.openUpiApp('${Storage.sanitize(pay.to)}', '${pay.amountRupees}', '${Storage.sanitize(creditorUpi)}')" 
+                                        class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-emeraldMint hover:bg-emeraldMintDark text-obsidian font-bold text-xs shadow-sm transition active:scale-95 whitespace-nowrap">
+                                  <span>📲 Open UPI App</span>
+                                </button>
+                                <button onclick="app.copyUpiLink('${Storage.sanitize(pay.to)}', '${pay.amountRupees}', '${Storage.sanitize(creditorUpi)}')" 
+                                        aria-label="Copy UPI payment link" class="inline-flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surfaceLight hover:bg-surfaceHover text-slate-200 text-xs font-semibold border border-surfaceBorder transition active:scale-95 whitespace-nowrap" title="Copy exact UPI payment link">
+                                  <span>📋 Copy Link</span>
+                                </button>
+                              </div>
+                            ` : `
+                              <div class="mt-1 flex flex-col gap-1.5 p-2 rounded-lg bg-amberGlow/5 border border-amberGlow/20">
+                                <div class="flex items-center justify-between gap-2">
+                                  <span class="text-[10px] text-amber-300 font-medium">⚠️ Recipient UPI Not Configured</span>
+                                  <button onclick="app.openUpiModal('${Storage.sanitize(pay.to)}', '')" 
+                                          class="text-[10px] font-bold text-amberGlow hover:text-amber-300 underline transition">
+                                    + Set ${Storage.sanitize(pay.to)}'s UPI
+                                  </button>
+                                </div>
+                                <div class="text-[9.5px] text-slate-400">Configure ${Storage.sanitize(pay.to)}'s UPI ID to enable instant payment links.</div>
+                                <div class="flex items-center gap-2 opacity-50">
+                                  <button disabled class="flex-1 py-1 rounded bg-surfaceLight text-slate-500 text-xs font-bold cursor-not-allowed border border-surfaceBorder">
+                                    📲 Open UPI App
+                                  </button>
+                                  <button disabled class="px-2.5 py-1 rounded bg-surfaceLight text-slate-500 text-xs font-semibold cursor-not-allowed border border-surfaceBorder">
+                                    📋 Copy Link
+                                  </button>
+                                </div>
+                              </div>
+                            `}
                           ` : ''}
                         </div>
                       `;
@@ -2089,29 +2120,92 @@
       // ========================================
       // UPI PAYMENT TRIGGER & QR GENERATOR
       // ========================================
-      triggerUpiPayment(payeeName, amountRupees, payeeUpi) {
+      openUpiApp(payeeName, amountRupees, payeeUpi) {
         if (!payeeUpi) {
+          this.showToast(`Please set ${payeeName}'s UPI ID first.`, 'warning');
           this.openUpiModal(payeeName, '', (savedUpi) => {
-            this.executeUpiIntent(payeeName, amountRupees, savedUpi);
+            if (savedUpi) {
+              this.openUpiApp(payeeName, amountRupees, savedUpi);
+            }
           });
           return;
         }
-        this.executeUpiIntent(payeeName, amountRupees, payeeUpi);
+
+        try {
+          const upiUri = Engine.UPI.buildPaymentUri({
+            payeeVpa: payeeUpi,
+            payeeName: payeeName,
+            amountRupees: amountRupees,
+            outingTitle: this.outing.title
+          });
+
+          this.currentQrIntent = upiUri;
+          const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+          if (isMobile) {
+            window.location.href = upiUri;
+          }
+
+          this.openQrModal(payeeName, amountRupees, payeeUpi, upiUri);
+        } catch (e) {
+          this.showToast(`Cannot open UPI: ${e.message}`, 'error');
+        }
       }
 
-      executeUpiIntent(payeeName, amountRupees, payeeUpi) {
-        const title = this.outing.title || 'HisabMate Settlement';
-        const note = `HisabMate: ${title}`;
-        const upiUri = `upi://pay?pa=${encodeURIComponent(payeeUpi)}&pn=${encodeURIComponent(payeeName)}&am=${amountRupees}&cu=INR&tn=${encodeURIComponent(note)}`;
-
-        this.currentQrIntent = upiUri;
-        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-        
-        if (isMobile) {
-          window.location.href = upiUri;
+      copyUpiLink(payeeName, amountRupees, payeeUpi) {
+        if (!payeeUpi) {
+          this.showToast(`Please set ${payeeName}'s UPI ID first.`, 'warning');
+          this.openUpiModal(payeeName, '', (savedUpi) => {
+            if (savedUpi) {
+              this.copyUpiLink(payeeName, amountRupees, savedUpi);
+            }
+          });
+          return;
         }
 
-        this.openQrModal(payeeName, amountRupees, payeeUpi, upiUri);
+        try {
+          const upiUri = Engine.UPI.buildPaymentUri({
+            payeeVpa: payeeUpi,
+            payeeName: payeeName,
+            amountRupees: amountRupees,
+            outingTitle: this.outing.title
+          });
+
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(upiUri).then(() => {
+              this.showToast('UPI payment link copied to clipboard! 📋', 'success');
+            }).catch(() => {
+              this.fallbackCopyText(upiUri);
+            });
+          } else {
+            this.fallbackCopyText(upiUri);
+          }
+        } catch (e) {
+          this.showToast(`Cannot copy link: ${e.message}`, 'error');
+        }
+      }
+
+      fallbackCopyText(text) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+          const successful = document.execCommand('copy');
+          if (successful) {
+            this.showToast('UPI payment link copied to clipboard! 📋', 'success');
+          } else {
+            prompt('Copy this UPI payment link:', text);
+          }
+        } catch (err) {
+          prompt('Copy this UPI payment link:', text);
+        }
+        document.body.removeChild(textarea);
+      }
+
+      triggerUpiPayment(payeeName, amountRupees, payeeUpi) {
+        this.openUpiApp(payeeName, amountRupees, payeeUpi);
       }
 
       openQrModal(name, amount, upi, uri) {
@@ -2192,6 +2286,15 @@
         const input = document.getElementById('upi-modal-input');
         const newUpi = input ? input.value.trim() : '';
 
+        if (newUpi) {
+          const check = Engine.UPI.validateUpiId(newUpi);
+          if (!check.valid) {
+            this.showToast(check.error || 'Invalid UPI ID format. Expected user@bank or phone@upi', 'error');
+            if (input) input.focus();
+            return;
+          }
+        }
+
         const member = this.outing.squad.find(m => m.name.toLowerCase() === this.activeModalMember.toLowerCase());
         if (member) {
           member.upi = newUpi;
@@ -2210,6 +2313,33 @@
       // ========================================
       // EXPORT & SUMMARY GENERATION
       // ========================================
+      downloadPdfBill() {
+        if (!this.outing.squad || this.outing.squad.length === 0) {
+          this.showToast('Add squad members before generating bill.', 'warning');
+          return;
+        }
+
+        if (this.isGeneratingPdf) return;
+        this.isGeneratingPdf = true;
+
+        this.showToast('Generating official PDF bill... 📄', 'info');
+
+        setTimeout(() => {
+          try {
+            if (typeof jspdf === 'undefined' && typeof window.jspdf === 'undefined') {
+              throw new Error('PDF generator library is loading. Please try again.');
+            }
+            const { doc, filename } = Engine.PdfGenerator.downloadPdf(this.outing, this.settlementResult);
+            this.showToast(`PDF Bill downloaded! 📄`, 'success');
+          } catch (err) {
+            console.error('PDF Generation failed:', err);
+            this.showToast(`PDF generation failed: ${err.message}`, 'error');
+          } finally {
+            this.isGeneratingPdf = false;
+          }
+        }, 80);
+      }
+
       exportCSV() {
         const csv = Storage.exportCSV(this.outing, this.settlementResult);
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -3153,8 +3283,11 @@
         const waBtn = document.getElementById('btn-share-whatsapp');
         if (waBtn) waBtn.addEventListener('click', () => this.shareToWhatsApp());
 
+        const pdfBtn = document.getElementById('btn-download-pdf');
+        if (pdfBtn) pdfBtn.addEventListener('click', () => this.downloadPdfBill());
+
         const csvBtn = document.getElementById('btn-export-csv');
-        if (csvBtn) csvBtn.addEventListener('click', () => this.exportCSV());
+        if (csvBtn) csvBtn.addEventListener('click', () => this.downloadPdfBill());
 
         const copySummaryBtn = document.getElementById('btn-copy-summary');
         if (copySummaryBtn) copySummaryBtn.addEventListener('click', () => this.copySummaryText());
