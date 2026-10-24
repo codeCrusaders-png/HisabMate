@@ -3,7 +3,6 @@
 > *“HisabMate hai, toh sab sorted hai.”*
 
 🌐 **Live Application:** [https://codecrusaders-png.github.io/HisabMate/](https://codecrusaders-png.github.io/HisabMate/)  
-📦 **Repository:** [https://github.com/codecrusaders-png/HisabMate](https://github.com/codecrusaders-png/HisabMate)
 
 ---
 
