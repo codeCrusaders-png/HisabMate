@@ -210,7 +210,7 @@
           </h1>
           <div class="mt-1">
             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-amberGlow/10 border border-amberGlow/25 text-amber-300 text-xs font-medium">
-              &ldquo;HisabMate hai, toh sab sorted hai.&rdquo;
+              &ldquo;Fair, transparent expense splitting for everyone.&rdquo;
             </span>
           </div>
         </div>
@@ -228,7 +228,7 @@
           <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <span>Purane Hisab</span>
+          <span>History</span>
           <span id="history-count-badge" class="px-1.5 py-0.2 rounded-full bg-surfaceLight border border-surfaceBorder text-[10px] text-amberGlow font-mono">0</span>
         </button>
 
@@ -237,7 +237,7 @@
           <svg class="w-4 h-4 text-amberGlow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
           </svg>
-          <span>Naya Trip</span>
+          <span>New Outing</span>
         </button>
 
         <!-- Share Outing Button -->
@@ -245,11 +245,11 @@
           <svg class="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
           </svg>
-          <span>Share Karo</span>
+          <span>Share</span>
         </button>
 
         <!-- How It Works / Info Modal Button -->
-        <button id="btn-open-info" aria-label="How the Zero-Drift paise math and settlement works" title="Kaise kaam karta hai HisabMate" class="p-1.5 rounded-lg bg-surface border border-surfaceBorder hover:border-slate-500 text-slate-400 hover:text-white transition">
+        <button id="btn-open-info" aria-label="How the Zero-Drift paise math and settlement works" title="How the Zero-Drift paise math works" class="p-1.5 rounded-lg bg-surface border border-surfaceBorder hover:border-slate-500 text-slate-400 hover:text-white transition">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
@@ -265,22 +265,22 @@
         <a href="#section-squad" class="flex items-center gap-2.5 p-2 rounded-xl bg-surfaceLight/80 border border-surfaceBorder hover:border-amber-500/40 transition">
           <span class="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 text-xs font-bold flex items-center justify-center font-mono">1</span>
           <div class="min-w-0">
-            <div class="text-xs font-bold text-white truncate">1. The Squad (Dost Log)</div>
-            <div class="text-[10px] text-slate-400 truncate">Bande add karo</div>
+            <div class="text-xs font-bold text-white truncate">1. The Squad</div>
+            <div class="text-[10px] text-slate-400 truncate">Add participants</div>
           </div>
         </a>
         <a href="#section-story" class="flex items-center gap-2.5 p-2 rounded-xl bg-surfaceLight/80 border border-surfaceBorder hover:border-sky-500/40 transition">
           <span class="w-6 h-6 rounded-full bg-sky-500/20 text-sky-400 text-xs font-bold flex items-center justify-center font-mono">2</span>
           <div class="min-w-0">
-            <div class="text-xs font-bold text-white truncate">2. Scene Kya Tha?</div>
-            <div class="text-[10px] text-slate-400 truncate">Bolo ya story likho</div>
+            <div class="text-xs font-bold text-white truncate">2. Expense Story</div>
+            <div class="text-[10px] text-slate-400 truncate">Natural language / voice</div>
           </div>
         </a>
         <a href="#parsed-expenses-section" class="flex items-center gap-2.5 p-2 rounded-xl bg-surfaceLight/80 border border-surfaceBorder hover:border-emerald-500/40 transition">
           <span class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-bold flex items-center justify-center font-mono">3</span>
           <div class="min-w-0">
-            <div class="text-xs font-bold text-white truncate">3. Verify Karo</div>
-            <div class="text-[10px] text-slate-400 truncate">Kharcha cross-check</div>
+            <div class="text-xs font-bold text-white truncate">3. Review & Edit</div>
+            <div class="text-[10px] text-slate-400 truncate">Verify interpreted shares</div>
           </div>
         </a>
         <a href="#section-settlement" class="flex items-center gap-2.5 p-2 rounded-xl bg-surfaceLight/80 border border-surfaceBorder hover:border-rose-500/40 transition">
@@ -301,10 +301,10 @@
         <!-- Outing Name -->
         <div class="md:col-span-8">
           <label for="outing-title" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
-            Outing / Trip Ka Naam
+            Outing / Trip Title
           </label>
           <div class="relative">
-            <input type="text" id="outing-title" placeholder="e.g. Goa Trip, Digha Weekend ya Saturday Night Party" 
+            <input type="text" id="outing-title" placeholder="e.g. Goa Trip, Digha Weekend, or Saturday Dinner" 
                    class="w-full bg-obsidian border border-surfaceBorder focus:border-amberGlow focus:ring-1 focus:ring-amberGlow/50 rounded-xl px-4 py-2.5 text-sm sm:text-base font-medium text-white placeholder-slate-600 transition outline-none">
             <span class="absolute right-3 top-3 text-slate-600 pointer-events-none">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -317,7 +317,7 @@
         <!-- Date Picker -->
         <div class="md:col-span-4">
           <label for="outing-date" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
-            Date (Tareekh)
+            Date
           </label>
           <input type="date" id="outing-date" 
                  class="w-full bg-obsidian border border-surfaceBorder focus:border-amberGlow focus:ring-1 focus:ring-amberGlow/50 rounded-xl px-3.5 py-2.5 text-sm font-medium text-slate-200 transition outline-none">
@@ -333,18 +333,18 @@
         <div class="flex items-center gap-2">
           <h2 id="squad-heading" class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
             <span>👥</span>
-            <span>Step 1: The Squad (Apne Dost)</span>
+            <span>Step 1: The Squad</span>
             <span id="squad-count-badge" class="text-xs font-mono px-2 py-0.5 rounded-full bg-surfaceLight border border-surfaceBorder text-amberGlow">0</span>
           </h2>
-          <span class="text-xs text-slate-400 hidden sm:inline">• Kaun kaun tha party/trip pe?</span>
+          <span class="text-xs text-slate-400 hidden sm:inline">• Add participants</span>
         </div>
 
         <div class="flex items-center gap-2">
           <button id="btn-load-sample-squad" class="text-xs text-amberGlow hover:text-amber-400 font-medium px-2.5 py-1 rounded-md bg-amberGlow/10 border border-amberGlow/20 transition hover:bg-amberGlow/20">
-            ⚡ Demo Squad Load Karo
+            ⚡ Load Sample Squad
           </button>
           <button id="btn-clear-squad" class="text-xs text-slate-500 hover:text-rose-400 transition px-2 py-1">
-            Khali Karo
+            Clear
           </button>
         </div>
       </div>
@@ -353,7 +353,7 @@
       <div id="squad-chip-container" 
            class="min-h-[56px] w-full bg-obsidian border border-surfaceBorder focus-within:border-amberGlow focus-within:ring-1 focus-within:ring-amberGlow/40 rounded-xl p-2.5 flex flex-wrap items-center gap-2 transition cursor-text">
         <input type="text" id="squad-input" 
-               placeholder="+ Dost ka naam likho aur Enter dabao..." 
+               placeholder="+ Add participant name and press Enter..." 
                class="bg-transparent border-none outline-none text-sm text-slate-100 placeholder-slate-500 px-2 py-1 flex-1 min-w-[200px]" 
                autocomplete="off" />
       </div>
@@ -372,10 +372,10 @@
         <div>
           <h2 id="story-heading" class="text-base sm:text-lg font-extrabold text-white flex items-center gap-2">
             <span>📝</span>
-            <span>Step 2: Scene Kya Tha? (The Kharcha Story)</span>
+            <span>Step 2: Tell Us The Story</span>
           </h2>
           <p class="text-xs text-slate-400 mt-0.5">
-            Bindaas likho ya bol kar batao kisne kitna kharcha kiya. Manual add karna ho toh woh bhi chalega!
+            Type or speak naturally about who paid and how expenses were shared. Or tap "Add Expense Manually".
           </p>
         </div>
 
@@ -384,7 +384,7 @@
           <button id="btn-dictate" aria-label="Toggle voice dictation" 
                   class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-surfaceLight border border-surfaceBorder hover:border-amberGlow/60 text-slate-200 text-xs font-semibold transition active:scale-95 shadow-sm group">
             <span id="dictate-icon" class="text-base group-hover:scale-110 transition">🎙️</span>
-            <span id="dictate-text">Bol Ke Batao</span>
+            <span id="dictate-text">Dictate</span>
             <span id="dictate-indicator" class="w-2 h-2 rounded-full bg-rose-500 hidden animate-ping"></span>
           </button>
 
@@ -425,7 +425,7 @@
       <!-- Narrative Textarea -->
       <div class="relative">
         <textarea id="story-input" rows="4" 
-                  placeholder="e.g. Plaban ne 1200 lunch ke diye for all of us except Priyasi. Priyasi ate veg for 250 paid by Anuj. Arkadeep bought 2 water bottles for 40 for everyone. Rohan paid 250 parking."
+                  placeholder="e.g. Plaban paid 1200 for lunch for all of us except Priyasi. Priyasi ate veg for 250 paid by Anuj. Arkadeep bought 2 water bottles for 40 for everyone. Rohan paid 250 parking."
                   class="w-full bg-obsidian border border-surfaceBorder focus:border-amberGlow focus:ring-1 focus:ring-amberGlow/50 rounded-xl p-4 text-sm sm:text-base font-normal text-slate-100 placeholder-slate-600 transition outline-none leading-relaxed resize-y min-h-[110px]"></textarea>
         
         <!-- Listening Waveform Indicator overlay when dictating -->
@@ -440,20 +440,20 @@
             </div>
             <div class="min-w-0">
               <div class="flex items-center gap-2">
-                <span class="font-bold text-white text-xs">Sun rahe hain, bindaas bolo... 🎙️</span>
-                <span class="text-[10px] text-slate-400 hidden sm:inline">English, Hindi & Hinglish supported</span>
+                <span class="font-bold text-white text-xs">Listening... speak now 🎙️</span>
+                <span class="text-[10px] text-slate-400 hidden sm:inline">Voice dictation active</span>
               </div>
               <div id="dictate-live-transcript" class="text-[11px] text-amberGlow/90 font-mono italic truncate max-w-xs sm:max-w-md mt-0.5">
-                Bolo jaise: "Anuj ne 1500 dinner ke diye sabke liye"
+                Say something like: "Anuj paid 1500 for dinner for all of us"
               </div>
             </div>
           </div>
           <div class="flex items-center gap-2 self-end sm:self-center">
-            <button id="btn-toggle-speech-lang" type="button" class="px-2.5 py-1.5 rounded-lg bg-surfaceLight border border-surfaceBorder hover:border-amberGlow text-slate-200 text-xs font-mono transition" title="Switch language between Hinglish/English and Hindi">
-              🌐 <span id="speech-lang-text" class="text-amberGlow font-bold">en-IN (English/Hinglish)</span>
+            <button id="btn-toggle-speech-lang" type="button" class="px-2.5 py-1.5 rounded-lg bg-surfaceLight border border-surfaceBorder hover:border-amberGlow text-slate-200 text-xs font-mono transition" title="Switch speech language between English and Hindi">
+              🌐 <span id="speech-lang-text" class="text-amberGlow font-bold">en-IN (English)</span>
             </button>
             <button id="btn-stop-dictation" type="button" class="px-3 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 font-semibold text-xs whitespace-nowrap transition active:scale-95 shadow-sm">
-              Bas Ho Gaya (Done) ✓
+              Done ✓
             </button>
           </div>
         </div>
@@ -465,14 +465,14 @@
           <span id="story-char-counter">0 chars</span>
           <span>•</span>
           <span id="story-sentence-counter">0 sentences</span>
-          <span class="hidden md:inline">• Shortcut: <kbd class="px-1 rounded bg-surfaceLight border border-surfaceBorder text-slate-300 font-mono text-[10px]">Ctrl + Enter</kbd> se hisab lagao</span>
+          <span class="hidden md:inline">• Shortcut: <kbd class="px-1 rounded bg-surfaceLight border border-surfaceBorder text-slate-300 font-mono text-[10px]">Ctrl + Enter</kbd> to parse story</span>
         </div>
 
         <div class="flex flex-wrap items-center gap-2.5">
           <!-- Add Manual Expense Button -->
           <button id="btn-open-manual-expense" type="button"
                   class="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-surfaceLight border border-surfaceBorder hover:border-slate-500 text-slate-200 text-xs font-semibold transition active:scale-95 shadow-sm">
-            <span>+ Manual Kharcha Add Karo</span>
+            <span>+ Add Expense Manually</span>
           </button>
 
           <!-- Primary Action Button: Review & Parse -->
@@ -497,17 +497,17 @@
             <div class="flex items-center gap-2.5">
               <span class="text-xl">🧾</span>
               <h2 id="review-heading" class="text-lg sm:text-xl font-extrabold text-white tracking-tight">
-                Step 3: Kharcha Cross-Check Karo
+                Step 3: Review Interpreted Expenses
               </h2>
               <span id="parsed-count-badge" class="text-xs font-mono font-medium px-2.5 py-0.5 rounded-full bg-surfaceLight border border-surfaceBorder text-amberGlow">0 events</span>
             </div>
             <p class="text-xs text-slate-400 mt-1">
-              Ek baar check kar lo kisne kitna pay kiya aur kiska hissa tha. Sab barabar hai toh aage badho!
+              Inspect interpreted payers, rupee amounts, and participant shares before committing to the ledger.
             </p>
           </div>
 
           <button id="btn-add-manual-item" class="text-xs text-slate-300 hover:text-white px-3.5 py-2 rounded-xl bg-surfaceLight border border-surfaceBorder hover:border-slate-500 font-semibold transition flex items-center gap-1.5 shadow-sm self-start sm:self-auto">
-            <span>+ Aur Kharcha Add Karo</span>
+            <span>+ Add Another Expense</span>
           </button>
         </div>
 
@@ -519,13 +519,13 @@
         <!-- Confirm and Calculate CTA Bar -->
         <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-surfaceBorder/70 bg-surfaceLight/30 -mx-5 sm:-mx-6 -mb-5 sm:-mb-6 p-4 sm:p-5 rounded-b-2xl">
           <div class="text-xs text-slate-400 flex items-center gap-1.5">
-            <span class="text-emeraldMint font-bold">✓ Ek ek paise ka hisab barabar</span>
+            <span class="text-emeraldMint font-bold">✓ Exact integer-paise math guaranteed</span>
             <span>• Zero mathematical drift</span>
           </div>
 
           <button id="btn-confirm-calculate" type="button"
                   class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-emeraldMint to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-obsidian font-extrabold text-sm tracking-wide shadow-lg shadow-emerald-500/20 transition-all transform active:scale-95">
-            <span>✓ Sab Sahi Hai, Settle Karo! 🚀</span>
+            <span>✓ Confirm & Settle Up! 🚀</span>
           </button>
         </div>
       </div>
@@ -540,7 +540,7 @@
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
           <!-- Metric 1: Total Spend -->
           <div class="bg-surface border border-surfaceBorder rounded-2xl p-4 shadow-lg flex flex-col justify-between">
-            <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Total Kharcha</span>
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Total Spend</span>
             <div class="mt-2">
               <span id="metric-total-spend" class="text-xl sm:text-2xl font-bold font-mono text-white">₹0.00</span>
               <span id="metric-expense-count" class="text-[10px] text-slate-400 block mt-0.5 font-mono">0 items</span>
@@ -549,7 +549,7 @@
 
           <!-- Metric 2: Squad Size -->
           <div class="bg-surface border border-surfaceBorder rounded-2xl p-4 shadow-lg flex flex-col justify-between">
-            <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Squad Ke Dost</span>
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Squad Members</span>
             <div class="mt-2">
               <span id="metric-squad-count" class="text-xl sm:text-2xl font-bold font-mono text-amberGlow">0</span>
               <span class="text-[10px] text-slate-400 block mt-0.5">shamil bande</span>
@@ -570,7 +570,7 @@
             <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Zero Drift</span>
             <div class="mt-2">
               <span id="metric-drift" class="text-xl sm:text-2xl font-bold font-mono text-emeraldMint">0.00p</span>
-              <span class="text-[10px] text-emeraldMint block mt-0.5 font-semibold">100% Hisab Fit</span>
+              <span class="text-[10px] text-emeraldMint block mt-0.5 font-semibold">Zero Drift</span>
             </div>
           </div>
         </div>
@@ -581,7 +581,7 @@
             <div class="flex items-center gap-2">
               <span class="text-sm font-bold text-white flex items-center gap-1.5">
                 <span>⚡</span>
-                <span>Settlement Status (Kitna chuka diya)</span>
+                <span>Settlement Progress</span>
               </span>
               <span id="settlement-status-pill" class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-surfaceLight border border-surfaceBorder text-slate-300 font-bold">
                 0% Complete
@@ -603,7 +603,7 @@
         <div>
           <h2 id="settlement-heading" class="text-lg sm:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
             <span>🤝</span>
-            <span>Step 4: Sab Sorted! Kaun Kisko Dega?</span>
+            <span>Step 4: Optimal Settlement Plan</span>
           </h2>
           <p class="text-xs text-slate-400 mt-0.5">
             Kam se kam transfers aur direct 1-click UPI payments. No round-about payment drama!
@@ -615,7 +615,7 @@
           <!-- Calculation Proof Button -->
           <button id="btn-open-audit" aria-label="Open calculation audit proof" 
                   class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surfaceLight border border-surfaceBorder hover:border-amberGlow text-slate-200 text-xs font-semibold transition active:scale-95 shadow-sm">
-            <span>📊 Hisab Ka Proof</span>
+            <span>📊 Mathematical Proof</span>
           </button>
 
           <!-- WhatsApp Summary Button -->
@@ -648,12 +648,12 @@
         <div class="w-14 h-14 rounded-2xl bg-surfaceLight border border-surfaceBorder flex items-center justify-center text-2xl mb-3 shadow-inner">
           💡
         </div>
-        <h3 class="text-base font-bold text-white mb-1">Abhi Koi Hisab Active Nahi Hai</h3>
+        <h3 class="text-base font-bold text-white mb-1">No Active Settlement Yet</h3>
         <p class="text-xs text-slate-400 max-w-sm mb-4 leading-relaxed">
-          Step 1 me apne dost add karo, Step 2 me batao kisne kya kharcha kiya, aur Step 3 me verify karke zero-drift settlements pao!
+          Add squad members in Step 1, describe expenses in Step 2, and review in Step 3 for zero-drift settlements!
         </p>
         <button onclick="app.loadSample(1)" class="px-4 py-2 rounded-xl bg-amberGlow/15 border border-amberGlow/30 text-amberGlow text-xs font-bold hover:bg-amberGlow/25 transition">
-          Demo Outing Load Karo
+          Load Sample Outing
         </button>
       </div>
     </section>
@@ -665,7 +665,7 @@
       <div class="flex items-center gap-2">
         <span class="font-bold text-slate-300">HisabMate</span>
         <span>•</span>
-        <span>Hisab sorted, dosti intact 🤝</span>
+        <span>HisabMate • Fair & Transparent Expense Splitting</span>
       </div>
       <div class="flex items-center gap-4 text-slate-400">
         <a href="https://github.com/codecrusaders-png/HisabMate" target="_blank" rel="noopener noreferrer" class="hover:text-amberGlow transition flex items-center gap-1">
@@ -687,7 +687,7 @@
         <div class="flex items-center justify-between pb-4 border-b border-surfaceBorder mb-5">
           <div class="flex items-center gap-2">
             <span class="text-xl">📁</span>
-            <h3 class="text-base sm:text-lg font-bold text-white">Purane Hisab (History)</h3>
+            <h3 class="text-base sm:text-lg font-bold text-white">Outing History</h3>
           </div>
           <button id="btn-close-history" aria-label="Close history drawer" class="p-1 rounded-lg text-slate-400 hover:text-white transition">
             ✕
@@ -695,7 +695,7 @@
         </div>
 
         <p class="text-xs text-slate-400 mb-4">
-          Aapke browser me locally saved saare outings ka hisab-kitab.
+          Locally saved outings in your browser storage.
         </p>
 
         <!-- Outings List Container -->
@@ -706,10 +706,10 @@
 
       <div class="pt-6 border-t border-surfaceBorder mt-6 flex items-center justify-between">
         <button id="btn-save-current-history" class="px-3.5 py-2 rounded-xl bg-amberGlow/15 hover:bg-amberGlow/25 border border-amberGlow/40 text-amberGlow text-xs font-bold transition">
-          💾 Current Outing Save Karo
+          💾 Save Current Outing
         </button>
         <button id="btn-clear-all-history" class="text-xs text-rose-400 hover:text-rose-300 transition">
-          History Khali Karo
+          History Clear
         </button>
       </div>
     </div>
@@ -734,7 +734,7 @@
         <!-- Payer Selection -->
         <div>
           <label for="manual-exp-payer" class="block font-semibold uppercase tracking-wider text-slate-400 mb-1">
-            Kisne Pay Kiya? (Payer) *
+            Who Paid? (Payer) *
           </label>
           <select id="manual-exp-payer" required 
                   class="w-full bg-obsidian border border-surfaceBorder focus:border-amberGlow focus:ring-1 focus:ring-amberGlow/50 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 outline-none">
@@ -744,7 +744,7 @@
         <!-- Amount (INR) -->
         <div>
           <label for="manual-exp-amount" class="block font-semibold uppercase tracking-wider text-slate-400 mb-1">
-            Kitne Rupaye Kharch Hue? (₹) *
+            Expense Amount (₹) *
           </label>
           <div class="relative">
             <span class="absolute left-3.5 top-2.5 text-slate-400 font-mono text-sm">₹</span>
@@ -756,7 +756,7 @@
         <!-- Description -->
         <div>
           <label for="manual-exp-desc" class="block font-semibold uppercase tracking-wider text-slate-400 mb-1">
-            Kisme Kharcha Hua? (Description) *
+            Description / Merchant *
           </label>
           <input type="text" id="manual-exp-desc" required placeholder="e.g. Seafood Lunch, Cab to Hotel, Drinks" 
                  class="w-full bg-obsidian border border-surfaceBorder focus:border-amberGlow focus:ring-1 focus:ring-amberGlow/50 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-600 outline-none">
@@ -774,7 +774,7 @@
             <option value="Stay & Hotel">🏨 Stay & Hotel</option>
             <option value="Drinks & Snacks">🍻 Drinks & Chakhna</option>
             <option value="Activities & Tickets">🎟️ Tickets & Fun</option>
-            <option value="Other">📦 Other (Baaki Kharcha)</option>
+            <option value="Other">📦 Other</option>
           </select>
         </div>
 
@@ -785,7 +785,7 @@
               Kaun Kaun Shamil Tha? *
             </label>
             <button type="button" onclick="app.toggleAllManualParticipants()" class="text-[11px] text-amberGlow hover:text-amber-400">
-              Sabhi Dost
+              Select All
             </button>
           </div>
           <div id="manual-exp-participants" class="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-obsidian border border-surfaceBorder max-h-36 overflow-y-auto">
@@ -798,7 +798,7 @@
             Cancel
           </button>
           <button type="submit" class="px-5 py-2 rounded-xl bg-amberGlow hover:bg-amber-400 text-obsidian font-bold transition">
-            Kharcha Save Karo 💾
+            Save Expense 💾
           </button>
         </div>
       </form>
@@ -813,13 +813,13 @@
       <div class="flex items-center justify-between mb-4">
         <div class="flex items-center gap-2">
           <span class="text-xl">📱</span>
-          <h3 class="text-base font-bold text-white" id="upi-modal-title">UPI ID Set Karo</h3>
+          <h3 class="text-base font-bold text-white" id="upi-modal-title">Configure UPI ID</h3>
         </div>
         <button onclick="app.closeUpiModal()" aria-label="Close dialog" class="text-slate-400 hover:text-white text-sm">✕</button>
       </div>
       
       <p class="text-xs text-slate-400 mb-3" id="upi-modal-desc">
-        Apne dost ka UPI ID set karo taaki log 1-click me unko direct pay kar sakein.
+        Set UPI ID for 1-click repayments.
       </p>
 
       <div class="mb-4">
@@ -835,7 +835,7 @@
           Cancel
         </button>
         <button id="btn-save-upi" class="px-4 py-2 rounded-xl bg-amberGlow hover:bg-amber-400 text-obsidian text-xs font-bold transition">
-          UPI ID Save Karo ⚡
+          Save UPI ID ⚡
         </button>
       </div>
     </div>
@@ -850,7 +850,7 @@
         <div class="flex items-center gap-2 text-left">
           <span class="text-xl">📲</span>
           <div>
-            <h3 class="text-base font-bold text-white">Scan Karke Pay Karo (UPI QR)</h3>
+            <h3 class="text-base font-bold text-white">Scan to Pay via UPI QR</h3>
             <p class="text-[11px] text-slate-400" id="qr-modal-subtitle">GPay, PhonePe, Paytm, CRED, BHIM</p>
           </div>
         </div>
@@ -873,7 +873,7 @@
           <span>📲 Direct UPI App Kholo</span>
         </a>
         <button onclick="app.copyQrIntent()" class="w-full py-2 rounded-xl bg-surfaceLight hover:bg-surfaceHover text-slate-300 text-xs font-semibold transition border border-surfaceBorder">
-          Payment Link Copy Karo
+          Copy Payment Link
         </button>
       </div>
     </div>
@@ -887,13 +887,13 @@
       <div class="flex items-center justify-between pb-3 border-b border-surfaceBorder mb-4">
         <div class="flex items-center gap-2">
           <span class="text-xl">📲</span>
-          <h3 class="text-base sm:text-lg font-bold text-white">Doston Ke Sath Hisab Share Karo</h3>
+          <h3 class="text-base sm:text-lg font-bold text-white">Share Outing with Friends</h3>
         </div>
         <button onclick="app.closeShareModal()" aria-label="Close dialog" class="text-slate-400 hover:text-white text-sm">✕</button>
       </div>
 
       <p class="text-xs text-slate-400 mb-3.5 leading-relaxed">
-        Ye QR scan karke ya link bhej kar poora hisab doston ke phone me sync kar sakte ho bina kisi account ke.
+        Scan this QR code or share the link to sync this outing on friends' devices without accounts.
       </p>
 
       <!-- QR Mount -->
@@ -908,7 +908,7 @@
                class="flex-1 bg-obsidian border border-surfaceBorder rounded-xl px-3 py-2 text-[11px] font-mono text-slate-300 outline-none select-all" />
         <button onclick="app.copyShareLink()" 
                 class="px-3.5 py-2 rounded-xl bg-amberGlow hover:bg-amber-400 text-obsidian text-xs font-bold transition whitespace-nowrap active:scale-95">
-          Link Copy Karo
+          Copy Link
         </button>
       </div>
 
@@ -1209,7 +1209,7 @@
         // Prevent duplicate names
         const exists = this.outing.squad.some(m => m.name.toLowerCase() === name.toLowerCase());
         if (exists) {
-          this.showToast(`${name} pehle se Squad me shamil hai! 👥`, 'info');
+          this.showToast(`${name} is already in the Squad! 👥`, 'info');
           return;
         }
 
@@ -1226,7 +1226,7 @@
           const isParticipant = this.outing.expenses.some(e => (e.included || []).some(n => n.toLowerCase() === member.name.toLowerCase()));
 
           if (isPayer || isParticipant) {
-            const confirmed = confirm(`Member "${member.name}" active kharche me shamil hai.\n\nHatane par poora hisab recalculate hoga aur wo splits se nikal jayega.\n\nKya aap hatana chahte ho?`);
+            const confirmed = confirm(`Member "${member.name}" is involved in active expenses.\n\nRemoving them will recalculate the ledger and remove them from all splits.\n\nDo you want to proceed?`);
             if (!confirmed) return;
 
             this.outing.expenses.forEach(e => {
@@ -1242,7 +1242,7 @@
           const removed = this.outing.squad.splice(index, 1)[0];
           this.saveState();
           this.renderSquadChips();
-          this.showToast(`${removed.name} ko squad se hata diya`, 'info');
+          this.showToast(`Removed ${removed.name} from squad`, 'info');
           this.calculateSettlements(false);
         }
       }
@@ -1256,11 +1256,11 @@
         ];
         this.saveState();
         this.renderSquadChips();
-        this.showToast('Demo squad load ho gaya! (4 dost) ⚡', 'success');
+        this.showToast('Sample squad loaded! (4 members) ⚡', 'success');
       }
 
       clearSquad() {
-        if (confirm('Kya saare doston ko squad se hatana hai?')) {
+        if (confirm('Remove all members from the squad?')) {
           this.outing.squad = [];
           this.saveState();
           this.renderSquadChips();
@@ -1276,12 +1276,12 @@
         const squadNames = this.outing.squad.map(s => s.name);
 
         if (!story.trim() && this.outing.expenses.length === 0) {
-          this.showToast('Pehle kharche ki story likho ya bol kar batao! 📝', 'info');
+          this.showToast('Please write or dictate an expense story first! 📝', 'info');
           return;
         }
 
         if (squadNames.length === 0) {
-          this.showToast('Pehle Step 1 me apne dost toh add karo! 👥', 'info');
+          this.showToast('Please add squad members in Step 1 first! 👥', 'info');
           return;
         }
 
@@ -1301,7 +1301,7 @@
 
       commitReviewedExpenses() {
         if (this.candidateExpenses.length === 0) {
-          this.showToast('Kam se kam ek kharcha toh add karo bhai! 🧾', 'info');
+          this.showToast('Please add at least one expense event! 🧾', 'info');
           return;
         }
 
@@ -1310,21 +1310,21 @@
         for (let i = 0; i < this.candidateExpenses.length; i++) {
           const c = this.candidateExpenses[i];
           if (c.amountPaise <= 0) {
-            this.showToast(`Kharcha #${i + 1} ("${c.description}") ka amount valid hona chahiye! ⚠️`, 'error');
+            this.showToast(`Expense #${i + 1} ("${c.description}"): Amount must be positive! ⚠️`, 'error');
             return;
           }
           if (!c.payer || c.payer === 'Unresolved' || !squadNamesLower.includes(c.payer.toLowerCase())) {
-            this.showToast(`Kharcha #${i + 1} ("${c.description}") me payer "${c.payer || 'Unresolved'}" squad ka member hona chahiye! Edit karke choose karein. ⚠️`, 'error');
+            this.showToast(`Expense #${i + 1} ("${c.description}"): Payer "${c.payer || 'Unresolved'}" must be a registered squad member! ⚠️`, 'error');
             return;
           }
           if (c.unresolved && c.unresolved.length > 0) {
-            this.showToast(`Kharcha #${i + 1} me unresolved references hain: ${c.unresolved.join(', ')}. Edit karke registered dost select karein! ⚠️`, 'error');
+            this.showToast(`Expense #${i + 1} has unresolved references: ${c.unresolved.join(', ')}. Please edit to assign registered members! ⚠️`, 'error');
             return;
           }
           if (c.allocations) {
             const sum = Object.values(c.allocations).reduce((a, b) => a + b, 0);
             if (sum !== c.amountPaise) {
-              this.showToast(`Kharcha #${i + 1} ke shares (${Money.formatINR(sum)}) total amount (${Money.formatINR(c.amountPaise)}) se match nahi ho rahe! ⚠️`, 'error');
+              this.showToast(`Expense #${i + 1}: Shares (${Money.formatINR(sum)}) do not match total amount (${Money.formatINR(c.amountPaise)})! ⚠️`, 'error');
               return;
             }
           }
@@ -1336,7 +1336,7 @@
 
         const target = document.getElementById('section-settlement');
         if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        this.showToast('Hisab lag gaya! Sab settlements ready hain 🥳', 'success');
+        this.showToast('Settlements calculated! All dues resolved 🥳', 'success');
       }
 
       // ========================================
@@ -1377,7 +1377,7 @@
           this.renderAll();
 
           if (notify) {
-            this.showToast('Zero-drift settlement ready! Sab hisab barabar ⚡', 'success');
+            this.showToast('Zero-drift settlement calculated! ⚡', 'success');
           }
         } catch (err) {
           console.error('Calculation error:', err);
@@ -1394,7 +1394,7 @@
         this.saveState();
         this.renderSettlementGrid();
         this.renderSettlementProgress();
-        this.showToast('Payment settled mark ho gaya! ✓', 'success');
+        this.showToast('Payment marked as settled! ✓', 'success');
       }
 
       undoPaymentSettled(txId) {
@@ -1403,7 +1403,7 @@
         this.saveState();
         this.renderSettlementGrid();
         this.renderSettlementProgress();
-        this.showToast('Payment status undo kar diya ↩️', 'info');
+        this.showToast('Payment status reset ↩️', 'info');
       }
 
       copyPaymentDetails(from, to, amountRupees, upi) {
@@ -1411,7 +1411,7 @@
         const upiNote = upi ? ` via UPI (${upi})` : '';
         const text = `Pay ₹${amountRupees} to ${to}${upiNote} for ${title}.`;
         navigator.clipboard.writeText(text).then(() => {
-          this.showToast('Payment details copy ho gayi! 📋', 'success');
+          this.showToast('Payment details copied to clipboard! 📋', 'success');
         });
       }
 
@@ -1560,7 +1560,7 @@
                       </span>
                     ` : (hasWarning ? `
                       <span class="px-2 py-0.5 rounded-full bg-amberGlow/20 text-amberGlow text-[10px] font-bold border border-amberGlow/30">
-                        ⚠️ Check Karo
+                        ⚠️ Check Details
                       </span>
                     ` : '')}
                   </div>
@@ -1570,12 +1570,12 @@
                       ${formattedAmount}
                     </span>
                     <div class="flex items-center gap-1">
-                      <button onclick="app.openManualExpenseModal(${idx})" aria-label="Edit event" class="p-1 text-slate-400 hover:text-amberGlow transition rounded hover:bg-surfaceLight" title="Kharcha edit karo">
+                      <button onclick="app.openManualExpenseModal(${idx})" aria-label="Edit event" class="p-1 text-slate-400 hover:text-amberGlow transition rounded hover:bg-surfaceLight" title="Edit expense">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                         </svg>
                       </button>
-                      <button onclick="app.deleteCandidateItem(${idx})" aria-label="Delete event" class="p-1 text-slate-400 hover:text-rose-400 transition rounded hover:bg-surfaceLight" title="Kharcha hatao">
+                      <button onclick="app.deleteCandidateItem(${idx})" aria-label="Delete event" class="p-1 text-slate-400 hover:text-rose-400 transition rounded hover:bg-surfaceLight" title="Delete expense">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
@@ -1589,13 +1589,13 @@
                 </div>
 
                 <div class="text-xs text-slate-400 font-normal mt-1 leading-snug">
-                  Kiske liye: <span class="text-slate-300 font-normal">${Storage.sanitize(forList)}</span>
-                  ${exp.excluded && exp.excluded.length > 0 ? `<span class="text-rose-400 text-[11px] block mt-0.5">Chhod kar (Excluded): ${Storage.sanitize(exp.excluded.join(', '))}</span>` : ''}
+                  Shared by: <span class="text-slate-300 font-normal">${Storage.sanitize(forList)}</span>
+                  ${exp.excluded && exp.excluded.length > 0 ? `<span class="text-rose-400 text-[11px] block mt-0.5">Excluding: ${Storage.sanitize(exp.excluded.join(', '))}</span>` : ''}
                 </div>
 
                 ${exp.allocations ? `
                   <div class="mt-2.5 pt-2 border-t border-surfaceBorder/40">
-                    <div class="text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-1">Individual Shares (Hissa):</div>
+                    <div class="text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-1">Individual Shares:</div>
                     <div class="flex flex-wrap gap-1.5">
                       ${Object.keys(exp.allocations).map(name => `
                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surfaceLight border border-surfaceBorder text-[11px] font-mono text-slate-300">
@@ -1607,7 +1607,7 @@
                   </div>
                 ` : (exp.included && exp.included.length > 0 ? `
                   <div class="mt-2 pt-1.5 border-t border-surfaceBorder/30 text-[11px] text-slate-400">
-                    Equal split: <strong class="text-slate-300 font-mono">~${Money.formatINR(Math.round(exp.amountPaise / exp.included.length))}</strong> each (${exp.included.length} dost)
+                    Equal split: <strong class="text-slate-300 font-mono">~${Money.formatINR(Math.round(exp.amountPaise / exp.included.length))}</strong> each (${exp.included.length} members)
                   </div>
                 ` : '')}
 
@@ -1772,7 +1772,7 @@
                       </span>
                     ` : `
                       <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emeraldMint/10 border border-emeraldMint/30 text-emeraldMint text-xs font-mono font-bold">
-                        Sab Clear • Zero Dues 🥳
+                        All Clear • Zero Dues 🥳
                       </span>
                     `}
                   </div>
@@ -1781,11 +1781,11 @@
                 <!-- Financial Stats Row -->
                 <div class="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-obsidian border border-surfaceBorder/80 mb-3 text-xs font-mono">
                   <div>
-                    <span class="text-slate-500 text-[10px] uppercase tracking-wider block">Paid (Jeb se nikla)</span>
+                    <span class="text-slate-500 text-[10px] uppercase tracking-wider block">Paid (Contributions)</span>
                     <span class="text-slate-200 font-semibold">${paidRupees}</span>
                   </div>
                   <div>
-                    <span class="text-slate-500 text-[10px] uppercase tracking-wider block">Consumed (Apna hissa)</span>
+                    <span class="text-slate-500 text-[10px] uppercase tracking-wider block">Consumed (Allocated Share)</span>
                     <span class="text-slate-200 font-semibold">${consumedRupees}</span>
                   </div>
                 </div>
@@ -1796,7 +1796,7 @@
                           class="w-full flex items-center justify-between text-[11px] text-slate-400 hover:text-amberGlow transition font-medium px-2.5 py-1.5 rounded-lg bg-surfaceLight/50 border border-surfaceBorder/70 hover:border-slate-500">
                     <span class="flex items-center gap-1.5">
                       <span>🔍</span>
-                      <span>${hasDues ? 'Dena Hai ' + totalOwedRupees + ' • Proof dekho' : 'Zero dues ka hisab dekho'}</span>
+                      <span>${hasDues ? 'Owes ' + totalOwedRupees + ' • View breakdown' : 'Zero dues • View breakdown'}</span>
                     </span>
                     <span id="audit-arrow-${Storage.sanitize(member.name)}" class="text-xs transition-transform duration-200">▾</span>
                   </button>
@@ -1811,7 +1811,7 @@
                   ${hasDues ? `
                     <div class="text-[11px] font-bold uppercase tracking-wider text-rose-400 flex items-center gap-1 mb-1.5">
                       <span>🚨</span>
-                      <span>Outgoing Dues (Chukana Hai):</span>
+                      <span>Outgoing Dues:</span>
                     </div>
 
                     ${paymentsToMake.map(pay => {
@@ -1823,7 +1823,7 @@
                           <div class="flex items-start justify-between gap-2">
                             <div>
                               <div class="text-xs font-semibold text-slate-200 flex items-center gap-1.5 flex-wrap">
-                                <span class="${isSettled ? 'text-emeraldMint' : 'text-rose-400'} font-bold">${isSettled ? '✓ Paid to (Chukta)' : '➔ Pay to'}</span>
+                                <span class="${isSettled ? 'text-emeraldMint' : 'text-rose-400'} font-bold">${isSettled ? '✓ Paid to' : '➔ Pay to'}</span>
                                 <strong class="text-white">${Storage.sanitize(pay.to)}:</strong>
                                 <span class="font-mono font-bold ${isSettled ? 'text-emeraldMint' : 'text-rose-300'}">₹${pay.amountRupees}</span>
                               </div>
@@ -1861,10 +1861,10 @@
                     <div class="p-3.5 rounded-xl bg-emeraldMint/5 border border-emeraldMint/20 text-center flex flex-col items-center justify-center">
                       <div class="flex items-center gap-1.5 text-xs font-bold text-emeraldMint">
                         <span>✓</span>
-                        <span>Balle Balle! Zero Dues • Sab Sorted 🎉</span>
+                        <span>All Square • Zero Dues 🎉</span>
                       </div>
                       <p class="text-[11px] text-slate-400 mt-0.5 font-normal">
-                        ${isCreditor ? `Party boy/girl • Group se ₹${netRupees} wapas milenge 🤑` : `Pura hisab barabar • Sab clear 🥂`}
+                        ${isCreditor ? `Surplus: Will receive ₹${netRupees} from group 🤑` : `All square • Completely settled 🥂`}
                       </p>
                     </div>
                   `}
@@ -1882,7 +1882,7 @@
         let html = '<div class="space-y-2.5">';
 
         html += '<div>';
-        html += '<span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Jeb se upfront pay kiya:</span>';
+        html += '<span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Paid upfront:</span>';
         if (paidItems.length === 0) {
           html += '<p class="text-[11px] text-slate-500 italic">Koi upfront payment nahi kiya (₹0.00)</p>';
         } else {
@@ -1902,7 +1902,7 @@
         html += '</div>';
 
         html += '<div>';
-        html += '<span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Apna kharcha / consumed hissa:</span>';
+        html += '<span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Allocated share consumed:</span>';
         if (consumedItems.length === 0) {
           html += '<p class="text-[11px] text-slate-500 italic">Kuch consume nahi kiya (₹0.00)</p>';
         } else {
@@ -1937,7 +1937,7 @@
         </div>`;
         html += `<p class="text-[10px] text-slate-500 font-sans mt-0.5">
           ${info.paidPaise >= info.consumedPaise 
-            ? `Paid ${Money.formatINR(info.paidPaise)} - Consumed ${Money.formatINR(info.consumedPaise)} = Surplus (Wapas Aayega) ${netStr}` 
+            ? `Paid ${Money.formatINR(info.paidPaise)} - Consumed ${Money.formatINR(info.consumedPaise)} = Surplus (Will receive) ${netStr}` 
             : `Consumed ${Money.formatINR(info.consumedPaise)} - Paid ${Money.formatINR(info.paidPaise)} = Dena Hai (Debt) ${netStr}`}
         </p>`;
         html += '</div>';
@@ -2037,19 +2037,19 @@
 
         const amountPaise = Money.toPaise(amountStr);
         if (amountPaise <= 0) {
-          this.showToast('0 se zyada ka valid amount daalo bhai!', 'error');
+          this.showToast('Please enter an amount greater than zero!', 'error');
           return;
         }
 
         if (!desc) {
-          this.showToast('Kharcha kis cheez pe hua, wo toh likho!', 'error');
+          this.showToast('Please enter an expense description!', 'error');
           return;
         }
 
         const checkedBoxes = document.querySelectorAll('input[name="manual_participant"]:checked');
         const included = Array.from(checkedBoxes).map(b => b.value);
         if (included.length === 0) {
-          this.showToast('Kam se kam ek dost ko toh select karo!', 'error');
+          this.showToast('Please select at least one included participant!', 'error');
           return;
         }
 
@@ -2076,7 +2076,7 @@
           }
           this.saveState();
           this.renderMetadata();
-          this.showToast('Kharcha update ho gaya! ✓', 'success');
+          this.showToast('Expense updated! ✓', 'success');
         } else {
           this.candidateExpenses.push(item);
           if (this.outing.expenses.length > 0) {
@@ -2085,7 +2085,7 @@
           }
           this.saveState();
           this.renderMetadata();
-          this.showToast('Naya kharcha jud gaya! ⚡', 'success');
+          this.showToast('New expense added! ⚡', 'success');
         }
 
         this.closeManualExpenseModal();
@@ -2227,7 +2227,7 @@
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        this.showToast('Excel/CSV spreadsheet download ho gaya! 📊', 'success');
+        this.showToast('CSV spreadsheet downloaded! 📊', 'success');
       }
 
       exportJSON() {
@@ -2241,11 +2241,11 @@
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        this.showToast('JSON backup download ho gaya! 💾', 'success');
+        this.showToast('JSON backup downloaded! 💾', 'success');
       }
 
       generateSummaryText() {
-        const title = this.outing.title || 'Trip Ka Hisab';
+        const title = this.outing.title || 'Outing Settlement';
         const date = this.outing.date || new Date().toISOString().split('T')[0];
         const totalSpend = Money.formatINR(this.settlementResult.totalSpendPaise);
         const squad = this.outing.squad.map(s => s.name).join(', ');
@@ -2254,39 +2254,39 @@
 
         let msg = `🧾 *HisabMate: ${title}*\n`;
         msg += `📅 *Date:* ${date}\n`;
-        msg += `💰 *Total Kharcha:* ${totalSpend} (${this.outing.expenses.length} kharche)\n`;
+        msg += `💰 *Total Spend:* ${totalSpend} (${this.outing.expenses.length} expenses)\n`;
         msg += `👥 *Squad:* ${squad}\n\n`;
 
         msg += `━━━━━━━━━━━━━━━━━━━\n`;
-        msg += `📊 *NET HISAB (Kaun aage / Kaun peeche)*\n`;
+        msg += `📊 *NET BALANCES*\n`;
         this.outing.squad.forEach(m => {
           const info = totals[m.name];
           if (!info) return;
           const net = info.netPaise;
           const rupees = Money.formatINR(Math.abs(net));
           if (net > 0) {
-            msg += `• *${m.name}*: +${rupees} _(Wapas aayenge)_\n`;
+            msg += `• *${m.name}*: +${rupees} _(Will receive)_\n`;
           } else if (net < 0) {
-            msg += `• *${m.name}*: -${rupees} _(Dena banta hai)_\n`;
+            msg += `• *${m.name}*: -${rupees} _(Owes)_\n`;
           } else {
-            msg += `• *${m.name}*: ₹0.00 _(Sab barabar)_\n`;
+            msg += `• *${m.name}*: ₹0.00 _(All clear)_\n`;
           }
         });
 
         msg += `\n━━━━━━━━━━━━━━━━━━━\n`;
         if (transactions.length === 0) {
-          msg += `🎉 *Sab sorted hai! Kisi ko kisi ko kuch nahi dena.*\n`;
+          msg += `🎉 *All square! No outstanding dues.*\n`;
         } else {
-          msg += `🤝 *MINIMAL TRANSFERS (${transactions.length} payments)*\n`;
+          msg += `🤝 *OPTIMAL TRANSFERS (${transactions.length} payments)*\n`;
           transactions.forEach((t, i) => {
             const upiTag = t.creditorUpi ? ` (UPI: ${t.creditorUpi})` : '';
             const isSettled = this.outing.settlementRecords[t.id]?.status === 'marked_paid';
-            msg += `${i + 1}️⃣ *${t.from}* ➔ *${Money.formatINR(t.amountPaise)}* dega *${t.to}* ko${upiTag}${isSettled ? ' [CHUKTA ✓]' : ''}\n`;
+            msg += `${i + 1}️⃣ *${t.from}* ➔ *${Money.formatINR(t.amountPaise)}* to *${t.to}*${upiTag}${isSettled ? ' [PAID ✓]' : ''}\n`;
           });
         }
 
         msg += `\n━━━━━━━━━━━━━━━━━━━\n`;
-        msg += `✨ *Zero-drift hisab* • Settled via HisabMate`;
+        msg += `✨ *Zero-drift math* • Settled via HisabMate`;
 
         return msg;
       }
@@ -2294,7 +2294,7 @@
       shareToWhatsApp() {
         const text = this.generateSummaryText();
         navigator.clipboard.writeText(text).then(() => {
-          this.showToast('WhatsApp summary copy ho gayi! Ab group me chipka do 💬', 'success');
+          this.showToast('WhatsApp summary copied to clipboard! 💬', 'success');
         });
         const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
         window.open(url, '_blank');
@@ -2303,7 +2303,7 @@
       copySummaryText() {
         const text = this.generateSummaryText();
         navigator.clipboard.writeText(text).then(() => {
-          this.showToast('Settlement summary copy ho gayi! 📋', 'success');
+          this.showToast('Settlement summary copied to clipboard! 📋', 'success');
         });
       }
 
@@ -2350,14 +2350,14 @@
         const input = document.getElementById('share-link-input');
         if (!input) return;
         navigator.clipboard.writeText(input.value).then(() => {
-          this.showToast('Trip ka share link copy ho gaya! 🔗', 'success');
+          this.showToast('Outing share link copied to clipboard! 🔗', 'success');
         });
       }
 
       shareLinkWhatsApp() {
         const input = document.getElementById('share-link-input');
         if (!input) return;
-        const msg = `Bhai! Humara "${this.outing.title || 'Trip'}" ka hisab HisabMate pe check karo: ${input.value}`;
+        const msg = `Check out our "${this.outing.title || 'Outing'}" expenses on HisabMate: ${input.value}`;
         window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
       }
 
@@ -2385,11 +2385,11 @@
               this.outing = validated;
               this.saveState();
               window.history.replaceState(null, '', window.location.pathname);
-              this.showToast(`Trip sync ho gaya: ${validated.title} 🚀`, 'success');
+              this.showToast(`Outing synced: ${validated.title} 🚀`, 'success');
             }
           } catch (e) {
             console.error('Failed to import shared outing hash:', e);
-            this.showToast('Shared data load nahi ho paya.', 'error');
+            this.showToast('Could not load shared outing data.', 'error');
           }
         }
       }
@@ -2433,7 +2433,7 @@
         this.saveState();
         this.renderAll();
         this.triggerReviewAndParse(false);
-        this.showToast(`"${this.outing.title}" demo load ho gaya! ⚡`, 'success');
+        this.showToast(`"${this.outing.title}" sample story loaded! ⚡`, 'success');
       }
 
       // ========================================
@@ -2452,7 +2452,7 @@
 
       saveCurrentToHistory() {
         if (!this.outing.title && this.outing.expenses.length === 0) {
-          this.showToast('Save karne ke liye outing me kuch toh likho!', 'info');
+          this.showToast('Outing has no content to save.', 'info');
           return;
         }
 
@@ -2464,10 +2464,10 @@
 
         if (existingIdx >= 0) {
           list[existingIdx] = snapshot;
-          this.showToast(`"${snapshot.title || 'Trip'}" history me update ho gaya! 💾`, 'success');
+          this.showToast(`"${snapshot.title || 'Trip'}" updated in history! 💾`, 'success');
         } else {
           list.unshift(snapshot);
-          this.showToast(`"${snapshot.title || 'Trip'}" history me save ho gaya! 💾`, 'success');
+          this.showToast(`"${snapshot.title || 'Trip'}" saved to history! 💾`, 'success');
         }
 
         this.savePastOutings(list);
@@ -2482,7 +2482,7 @@
         if (outings.length === 0) {
           listContainer.innerHTML = `
             <div class="text-center py-8 text-slate-500 text-xs">
-              Abhi koi purana hisab saved nahi hai. "Current Outing Save Karo" dabao archive karne ke liye.
+              No saved outings yet. Click "Save Current Outing" to archive trips.
             </div>
           `;
           return;
@@ -2495,7 +2495,7 @@
               <div class="min-w-0 cursor-pointer" onclick="app.loadFromHistory(${idx})">
                 <h4 class="font-bold text-white text-sm truncate">${Storage.sanitize(item.title || 'Untitled Outing')}</h4>
                 <div class="text-[11px] text-slate-400 mt-0.5">
-                  ${item.date} • ${item.squad.length} dost • ${spend}
+                  ${item.date} • ${item.squad.length} members • ${spend}
                 </div>
               </div>
               <button onclick="app.deleteHistoryItem(${idx})" aria-label="Delete history entry" class="text-slate-500 hover:text-rose-400 p-1 transition" title="Hatao">
@@ -2515,7 +2515,7 @@
           this.renderAll();
           this.calculateSettlements(false);
           this.closeHistoryDrawer();
-          this.showToast(`"${this.outing.title}" load ho gaya! ✓`, 'success');
+          this.showToast(`"${this.outing.title}" loaded! ✓`, 'success');
         }
       }
 
@@ -2529,10 +2529,10 @@
       }
 
       clearAllHistory() {
-        if (confirm('Kya saare purane hisab delete karne hain? Ye wapas nahi aayega.')) {
+        if (confirm('Delete all saved outings? This cannot be undone.')) {
           this.savePastOutings([]);
           this.renderHistoryDrawer();
-          this.showToast('Puri history khali kar di gayi 🗑️', 'info');
+          this.showToast('History cleared 🗑️', 'info');
         }
       }
 
@@ -2547,7 +2547,7 @@
       // NEW OUTING
       // ========================================
       startNewOuting() {
-        if (confirm('Naya trip hisab shuru karein? Pehle save karna ho toh history me save kar lo.')) {
+        if (confirm('Start a new outing? Current changes will be replaced (save to history first if needed).')) {
           this.outing = {
             version: 2,
             id: 'out_' + Date.now(),
@@ -2563,7 +2563,7 @@
           this.calculateSettlements(false);
           this.saveState();
           this.renderAll();
-          this.showToast('Naya trip shuru ho gaya! ✨', 'info');
+          this.showToast('Started fresh outing! ✨', 'info');
         }
       }
 
@@ -2746,7 +2746,7 @@
 
         rec.onstart = () => {
           this.isDictating = true;
-          this.updateDictationUI(true, 'Sun rahe hain, boliye... (Listening)');
+          this.updateDictationUI(true, 'Listening... speak now');
         };
 
         rec.onresult = (event) => {
@@ -2796,7 +2796,7 @@
 
           if (event.error === 'no-speech') {
             const liveEl = document.getElementById('dictate-live-transcript');
-            if (liveEl) liveEl.textContent = 'Waiting for speech... (Awaz nahi aayi, boliye)';
+            if (liveEl) liveEl.textContent = 'Waiting for speech... (listening)';
             return;
           }
 
@@ -2886,9 +2886,9 @@
         this.dictationLang = (this.dictationLang === 'hi-IN') ? 'en-IN' : 'hi-IN';
         const label = document.getElementById('speech-lang-text');
         if (label) {
-          label.textContent = (this.dictationLang === 'hi-IN') ? 'hi-IN (हिंदी / Hindi)' : 'en-IN (English/Hinglish)';
+          label.textContent = (this.dictationLang === 'hi-IN') ? 'hi-IN (Hindi)' : 'en-IN (English)';
         }
-        this.showToast(`Voice language set to: ${this.dictationLang === 'hi-IN' ? 'Hindi (हिंदी)' : 'English/Hinglish'}`, 'info');
+        this.showToast(`Voice language set to: ${this.dictationLang === 'hi-IN' ? 'Hindi' : 'English'}`, 'info');
         if (this.isDictating) {
           this.scheduleRecognitionRestart();
         }
@@ -2937,7 +2937,7 @@
 
         try {
           this.speechRecognition.start();
-          this.updateDictationUI(true, 'Mic active... bolo bindaas 🎙️');
+          this.updateDictationUI(true, 'Mic active... listening 🎙️');
         } catch (e) {
           console.error('Failed to start speech recognition:', e);
           this.isDictating = false;
