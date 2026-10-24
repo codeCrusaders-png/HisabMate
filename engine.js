@@ -85,20 +85,64 @@
       'rooms?', 'passes?', 'tolls?'
     ],
 
-    /**
-     * Splits a multi-sentence narrative story into discrete expense clauses.
-     * Handles newlines, periods, semicolons, and compound conjunctions like "and Arka paid...".
-     */
+    NON_PARTICIPANT_TERMS: new Set([
+      'airbnb', 'finally', 'later', 'then', 'dinner', 'lunch', 'breakfast', 'brunch',
+      'cab', 'cabs', 'taxi', 'uber', 'ola', 'drinks', 'beers', 'dessert', 'tickets',
+      'flight', 'hotel', 'food', 'room', 'rooms', 'resort', 'chai', 'coffee', 'swiggy',
+      'zomato', 'blinkit', 'zepto', 'groceries', 'water', 'bottles', 'parking', 'toll',
+      'tolls', 'movie', 'petrol', 'diesel', 'fuel', 'snacks', 'party', 'outing', 'trip',
+      'seafood', 'boat', 'ride'
+    ]),
+
+    
+
+    isTransactionStarter(sentence, squadNames) {
+      let s = sentence.trim();
+      if (!s) return false;
+
+      // Strip leading list numbers: "1. ", "1) ", "- ", "• "
+      s = s.replace(/^\s*(?:\d+[\.\)]\s*|[-*•]\s*)/, '').trim();
+
+      const escapedNames = squadNames.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+
+      // "<Name> paid/spent/bought/covered..."
+      const payerVerbRegex = new RegExp(`^\\s*(?:${escapedNames})\\b\\s+(?:paid|spent|bought|covered|gave|chipped\\s*in|ordered|transferred|handled)\\b`, 'i');
+      if (payerVerbRegex.test(s)) return true;
+
+      // "Paid by <Name>" or "<Item> for ₹X paid by <Name>"
+      const paidByRegex = new RegExp(`(?:paid|bought|spent|covered)\\s+by\\s+(?:${escapedNames})\\b`, 'i');
+      if (paidByRegex.test(s)) return true;
+
+      // "<Name> : ₹X ..." or "<Name> — ₹X ..." or "<Name> - ₹X ..."
+      const colonRegex = new RegExp(`^\\s*(?:${escapedNames})\\s*[:\\—\\–\\-]\\s*(?:₹|rs\\.?|inr)?\\s*\\d+`, 'i');
+      if (colonRegex.test(s)) return true;
+
+      return false;
+    },
+
+    isInstructionOrMeta(sentence) {
+      const s = sentence.trim().toLowerCase();
+      // Typical instruction starts
+      if (/^(?:use\s+only|calculate\s+every|ensure\s+|assume\s+|note\s+that|please\s+|do\s+not\s+add|instructions?:|summary:|squad:|expenses?:|notes?:|here\s+are)/i.test(s)) {
+        return true;
+      }
+      // Sentences without any monetary amount and without payment verbs
+      const hasCurrency = /(?:₹|rs\.?|inr)\s*\d+|\b\d+(?:\.\d{1,2})?\s*(?:rupees|bucks|inr)/i.test(s);
+      const hasPayVerb = /\b(?:paid|spent|bought|covered|cost)\b/i.test(s);
+      if (!hasCurrency && !hasPayVerb) {
+        return true;
+      }
+      return false;
+    },
+
     splitStoryIntoClauses(storyText, squadNames = []) {
       if (!storyText || typeof storyText !== 'string') return [];
       let text = storyText.replace(/\r\n/g, '\n').trim();
       if (!text) return [];
 
-      // If squad members are known, split compound conjunctions e.g. "and Arka paid..."
+      // Split compound conjunctions when squad members are known
       if (squadNames.length > 0) {
-        const escapedNames = squadNames
-          .map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-          .join('|');
+        const escapedNames = squadNames.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
         const compoundRegex = new RegExp(
           `\\s+(?:and|while|then|plus)\\s+(?=(?:${escapedNames})\\s+(?:paid|spent|bought|covered|gave|chipped|ordered|transferred))`,
           'gi'
@@ -106,43 +150,70 @@
         text = text.replace(compoundRegex, '. ');
       }
 
-      return text
+      const rawSentences = text
         .split(/\n+|\.(?:\s+|$)|;+|!+(?:\s+|$)/g)
         .map(s => s.trim())
-        .filter(s => s.length > 2);
+        .filter(s => s.length > 1);
+
+      const eventBlocks = [];
+      let currentBlock = [];
+
+      rawSentences.forEach((sentence) => {
+        // If it's a new transaction start
+        if (this.isTransactionStarter(sentence, squadNames)) {
+          if (currentBlock.length > 0) {
+            eventBlocks.push(currentBlock.join('. '));
+            currentBlock = [];
+          }
+          currentBlock.push(sentence);
+          return;
+        }
+
+        // If we have an active transaction block, check if this is an allocation/exclusion/sharing continuation
+        if (currentBlock.length > 0) {
+          const isContinuation = /^(?:allocated|split|share|sharing|consumed|portion|each|except|excluding|without|minus|leaving|the\s+other|with\s+the\s+other|[A-Za-z0-9_]+\s*(?:₹|rs\.?|inr)?\s*\d+)/i.test(sentence)
+            || /(?:share\s+half|remaining\s+half|remainder|excluded|not\s+included)/i.test(sentence);
+
+          if (isContinuation) {
+            currentBlock.push(sentence);
+            return;
+          }
+        }
+
+        // If it's an instruction or meta sentence, ignore it
+        if (this.isInstructionOrMeta(sentence)) {
+          return;
+        }
+
+        // Otherwise, if it has currency/amount and we have an active block, attach it
+        if (currentBlock.length > 0 && /(?:₹|rs\.?|inr)\s*\d+/i.test(sentence)) {
+          currentBlock.push(sentence);
+        }
+      });
+
+      if (currentBlock.length > 0) {
+        eventBlocks.push(currentBlock.join('. '));
+      }
+
+      return eventBlocks;
     },
 
-    /**
-     * Terms that represent ordinary nouns, merchants, locations, or descriptions,
-     * which must NEVER be identified as human participants.
-     */
-    NON_PARTICIPANT_TERMS: new Set([
-      'airbnb', 'finally', 'later', 'then', 'dinner', 'lunch', 'breakfast', 'brunch',
-      'cab', 'cabs', 'taxi', 'uber', 'ola', 'drinks', 'beers', 'dessert', 'tickets',
-      'flight', 'hotel', 'food', 'room', 'rooms', 'resort', 'chai', 'coffee', 'swiggy',
-      'zomato', 'blinkit', 'zepto', 'groceries', 'water', 'bottles', 'parking', 'toll',
-      'tolls', 'movie', 'petrol', 'diesel', 'fuel', 'snacks', 'party', 'outing', 'trip'
-    ]),
-
-    /**
-     * Parses a single sentence/clause into a structured expense representation.
-     */
     parseClause(clause, squadNames = []) {
       const squadLowerMap = {};
-      squadNames.forEach(n => {
-        squadLowerMap[n.toLowerCase()] = n;
-      });
+      squadNames.forEach(n => squadLowerMap[n.toLowerCase()] = n);
 
       const warnings = [];
       const unresolved = [];
 
-      // 0. Clean leading transitional adverbs so they don't get parsed as names
-      const workingClause = clause.replace(/^(?:finally|later|then|after that|afterward|meanwhile|next|also|furthermore|additionally|plus|subsequently|lastly),?\s*/i, '').trim();
+      // Strip leading list numbers: "1. ", "1) ", "- ", "• "
+      let workingClause = clause.replace(/^\s*(?:\d+[\.\)]\s*|[-*•]\s*)/, '').trim();
+      // Clean transitional adverbs
+      workingClause = workingClause.replace(/^(?:finally|later|then|after that|afterward|meanwhile|next|also|furthermore|additionally|plus|subsequently|lastly),?\s*/i, '').trim();
 
-      // 1. Identify Payer strictly from registered squad members
+      // 1. Identify Payer
       let payer = null;
 
-      // Pattern A: "paid by <Name>", "bought by <Name>", "covered by <Name>", etc.
+      // Pattern A: "paid by <Name>", "bought by <Name>", etc.
       const paidByMatch = workingClause.match(/(?:paid|bought|spent|covered|given|handled|chipped\s*in)\s+by\s+([A-Za-z0-9_]+)/i);
       if (paidByMatch) {
         const candidate = paidByMatch[1].toLowerCase();
@@ -164,7 +235,18 @@
         }
       }
 
-      // Pattern C: Sentence starts with <Name>
+      // Pattern C: "<Name> — ₹X" or "<Name> : ₹X" or "<Name> - ₹X"
+      if (!payer) {
+        for (const name of squadNames) {
+          const regex = new RegExp(`^\\s*${name}\\b\\s*[:\\—\\–\\-]\\s*(?:₹|rs\\.?|inr)?\\s*\\d+`, 'i');
+          if (regex.test(workingClause)) {
+            payer = name;
+            break;
+          }
+        }
+      }
+
+      // Pattern D: Sentence starts with <Name>
       if (!payer) {
         for (const name of squadNames) {
           const regex = new RegExp(`^${name}\\b`, 'i');
@@ -175,7 +257,7 @@
         }
       }
 
-      // Check if sentence starts with an unknown word followed by "paid"
+      // Check unknown word followed by "paid"
       if (!payer) {
         const unknownPayerMatch = workingClause.match(/^([A-Za-z0-9_]+)\s+(?:paid|spent|bought|covered|gave|chipped\s*in)/i);
         if (unknownPayerMatch) {
@@ -193,7 +275,7 @@
         warnings.push('Payer could not be determined automatically.');
       }
 
-      // 2. Identify Amount (with quantity disambiguation)
+      // 2. Identify Primary Amount
       const amountRegex = /(?:₹|rs\.?|inr)?\s*(\b\d{1,3}(?:,\d{2,3})*(?:\.\d{1,2})?\b|\b\d+(?:\.\d{1,2})?\b)\s*(?:₹|rs\.?|inr|bucks|rupees)?/gi;
       let match;
       const candidates = [];
@@ -205,25 +287,35 @@
         if (isNaN(numVal) || numVal <= 0) continue;
 
         const matchIndex = match.index;
-        const prevContext = workingClause.slice(Math.max(0, matchIndex - 20), matchIndex).toLowerCase();
+        const prevContext = workingClause.slice(Math.max(0, matchIndex - 25), matchIndex).toLowerCase();
         const nextContext = workingClause.slice(matchIndex + fullMatch.length, matchIndex + fullMatch.length + 24).toLowerCase();
 
         let score = 0;
-        // Strong bonus for currency mark
         if (/[₹]|rs|inr|bucks|rupees/i.test(fullMatch)) score += 55;
-        // Bonus for price-indicating context
-        if (/(?:for|paid|spent|cost|worth|bill\s+of|bill\s+was|amounting\s+to|amount\s+of|totaling|total\s+of|of)\s*$/i.test(prevContext)) {
-          score += 40;
+        if (/(?:for|paid|spent|cost|worth|bill\s+of|bill\s+was|amounting\s+to|amount\s+of|totaling|total\s+of|of|[:\—\–\-])\s*$/i.test(prevContext)) {
+          score += 45;
         }
 
-        // Heavy penalty for quantity tokens (e.g., "2 water bottles", "4 plates")
-        const quantityPattern = new RegExp(`^\\s*(?:${Parser.QUANTITY_STOPWORDS.join('|')})`, 'i');
+        // Penalty if preceded by individual allocation words ("allocated", "Anuj ₹...")
+        if (/(?:allocated|share|portion|each)\s*$/i.test(prevContext)) {
+          score -= 40;
+        }
+        for (const sName of squadNames) {
+          if (new RegExp(`\\b${sName}\\s*[:=]?\\s*$`, 'i').test(prevContext)) {
+            score -= 30;
+            break;
+          }
+        }
+
+        // Quantity penalty
+        const quantityPattern = new RegExp(`^\\s*(?:${this.QUANTITY_STOPWORDS.join('|')})`, 'i');
         if (quantityPattern.test(nextContext)) {
           score -= 80;
         }
 
         if (numVal >= 10) score += 5;
         if (numVal >= 100) score += 10;
+        if (numVal >= 500) score += 10;
 
         candidates.push({ val: numVal, score, numStr, fullMatch });
       }
@@ -236,77 +328,194 @@
         warnings.push('Expense amount could not be determined.');
       }
 
-      // 3. Identify Exclusions: "except Priyasi", "without Anuj", "excluding Ritesh"
+      // 3. Identify Exclusions
       const excluded = [];
-      const exclusionMatch = workingClause.match(/(?:except|without|excluding|minus|leaving\s+out|not\s+including)\s+([^.,;!]+)/i);
-      let exclClause = '';
-      if (exclusionMatch) {
-        exclClause = exclusionMatch[1];
-        squadNames.forEach(name => {
-          if (new RegExp(`\\b${name}\\b`, 'i').test(exclClause)) {
-            if (!excluded.includes(name)) excluded.push(name);
-          }
-        });
-      }
+      const exclusionRegexes = [
+        /(?:except|without|excluding|minus|leaving\s+out|not\s+including)\s+([^.,;!]+)/gi,
+        /([A-Za-z0-9_,\s]+?)\s+(?:is|are|were|was)\s+(?:excluded|not\s+included|left\s+out|omitted)/gi,
+        /(?:with\s+)?the\s+other\s+(?:three|two|four|\d+)\s+excluded/gi
+      ];
+
+      exclusionRegexes.forEach(rgx => {
+        let em;
+        while ((em = rgx.exec(workingClause)) !== null) {
+          const textSection = em[1] || em[0];
+          squadNames.forEach(name => {
+            if (new RegExp(`\\b${name}\\b`, 'i').test(textSection)) {
+              if (!excluded.includes(name)) excluded.push(name);
+            }
+          });
+        }
+      });
 
       // 4. Identify Split Method & Allocations
       let splitType = 'equal';
       let allocations = null;
       let included = [];
 
-      // A. Check for Proportional Consumption pattern
-      // e.g. "David consumed half while Rahul and Aisha shared the remainder"
-      const propRegexA = /\b([A-Za-z0-9_]+)\s+consumed\s+(half|one[- ]third|one[- ]fourth|quarter|1\/2|1\/3|1\/4|\d+%)\s*(?:,\s*|\s+)?while\s+([A-Za-z0-9_,\s]+?)\s+shared\s+(?:the\s+)?remainder/i;
-      const propRegexB = /\b(half|one[- ]third|one[- ]fourth|quarter|1\/2|1\/3|1\/4|\d+%)\s+consumed\s+by\s+([A-Za-z0-9_]+)\s*(?:,\s*|\s+)?while\s+([A-Za-z0-9_,\s]+?)\s+shared\s+(?:the\s+)?remainder/i;
+      // --- CHECK 1: Custom individual participant amounts (e.g. Seafood) ---
+      // "allocated Anuj ₹300, Priyasi ₹450, and Plaban ₹750" or "Anuj ₹300, Priyasi ₹450, Plaban ₹750"
+      if (amountPaise > 0) {
+        const pairRegex = /\b([A-Za-z0-9_]+)\s*(?:[:=]|allocated|takes?|consumes?|portion|got)?\s*(?:₹|rs\.?|inr)?\s*(\b\d{1,3}(?:,\d{2,3})*(?:\.\d{1,2})?\b|\b\d+(?:\.\d{1,2})?\b)\s*(?:₹|rs\.?|inr)?/gi;
+        let pm;
+        const foundPairs = [];
+        while ((pm = pairRegex.exec(workingClause)) !== null) {
+          const nameCandidate = pm[1].toLowerCase();
+          const amtStr = pm[2].replace(/,/g, '');
+          const amtP = Math.round(parseFloat(amtStr) * 100);
+          if (squadLowerMap[nameCandidate] && amtP > 0) {
+            foundPairs.push({ name: squadLowerMap[nameCandidate], paise: amtP });
+          }
+        }
 
-      const propMatchA = workingClause.match(propRegexA);
-      const propMatchB = !propMatchA ? workingClause.match(propRegexB) : null;
-
-      if ((propMatchA || propMatchB) && amountPaise > 0) {
-        const consumerNameRaw = propMatchA ? propMatchA[1] : propMatchB[2];
-        const fracStr = (propMatchA ? propMatchA[2] : propMatchB[1]).toLowerCase();
-        const remainderRaw = propMatchA ? propMatchA[3] : propMatchB[3];
-
-        let fraction = 0;
-        if (fracStr === 'half' || fracStr === '1/2' || fracStr === '50%') fraction = 0.5;
-        else if (fracStr === 'one-third' || fracStr === '1/3') fraction = 1 / 3;
-        else if (fracStr === 'one-fourth' || fracStr === 'quarter' || fracStr === '1/4' || fracStr === '25%') fraction = 0.25;
-        else if (fracStr.endsWith('%')) fraction = parseFloat(fracStr) / 100;
-
-        const consumerCanonical = squadLowerMap[consumerNameRaw.toLowerCase()];
-        if (!consumerCanonical) {
-          unresolved.push(consumerNameRaw);
-          warnings.push(`Unknown consumer "${consumerNameRaw}" in proportional allocation.`);
-        } else {
-          // Identify remainder members
-          const remainderMembers = [];
+        if (foundPairs.length >= 2) {
+          const sumAlloc = foundPairs.reduce((acc, p) => acc + p.paise, 0);
+          allocations = {};
+          foundPairs.forEach(p => allocations[p.name] = (allocations[p.name] || 0) + p.paise);
+          splitType = 'custom';
+          included = Object.keys(allocations);
+          // Auto-exclude remaining squad members not in allocations
           squadNames.forEach(name => {
-            if (new RegExp(`\\b${name}\\b`, 'i').test(remainderRaw)) {
-              if (!remainderMembers.includes(name)) remainderMembers.push(name);
+            if (!included.includes(name) && !excluded.includes(name)) {
+              excluded.push(name);
             }
           });
 
-          if (remainderMembers.length === 0) {
-            warnings.push('Could not determine who shares the remainder.');
-          } else {
-            const propPaise = Math.round(amountPaise * fraction);
-            const remainderPaise = amountPaise - propPaise;
-            const remainderShares = Ledger.calculateEqualShares(remainderPaise, remainderMembers);
-
-            allocations = {};
-            allocations[consumerCanonical] = propPaise;
-            remainderMembers.forEach(m => {
-              allocations[m] = (allocations[m] || 0) + remainderShares[m].sharePaise;
-            });
-
-            splitType = 'proportional';
-            included = Object.keys(allocations);
+          if (sumAlloc !== amountPaise) {
+            warnings.push(`Allocation shares (₹${(sumAlloc / 100).toFixed(2)}) do not match total amount (₹${(amountPaise / 100).toFixed(2)}). Please adjust manually.`);
           }
         }
       }
 
-      // B. Check for Itemized / Specific portion pattern
-      // e.g. "including a specific ₹250 meal for Aisha, with the remaining ₹600 shared according to the stated rule"
+      // --- CHECK 2: Fixed equal share ("₹X each among A, B, C...") ---
+      // "split ₹150 each among Rohan, Sneha, Anuj, and Priyasi"
+      if (!allocations && amountPaise > 0) {
+        const eachRegex = /(?:split|at|for|share)?\s*(?:₹|rs\.?|inr)?\s*(\b\d{1,3}(?:,\d{2,3})*(?:\.\d{1,2})?\b|\b\d+(?:\.\d{1,2})?\b)\s*(?:₹|rs\.?|inr)?\s*(?:each|per\s+(?:person|head|member))\s*(?:among|between|for|to|shared\s+by)?\s*([^.]+)/i;
+        const eachMatch = workingClause.match(eachRegex);
+        if (eachMatch) {
+          const eachPaise = Math.round(parseFloat(eachMatch[1].replace(/,/g, '')) * 100);
+          const namesSection = eachMatch[2];
+          const members = [];
+          squadNames.forEach(n => {
+            if (new RegExp(`\\b${n}\\b`, 'i').test(namesSection) && !excluded.includes(n)) {
+              members.push(n);
+            }
+          });
+
+          if (members.length > 0) {
+            allocations = {};
+            members.forEach(m => allocations[m] = eachPaise);
+            splitType = 'custom';
+            included = members;
+            squadNames.forEach(name => {
+              if (!included.includes(name) && !excluded.includes(name)) {
+                excluded.push(name);
+              }
+            });
+
+            const totalEachPaise = members.length * eachPaise;
+            if (totalEachPaise !== amountPaise) {
+              warnings.push(`Calculated per-person total (₹${(totalEachPaise / 100).toFixed(2)}) does not match total amount (₹${(amountPaise / 100).toFixed(2)}).`);
+            }
+          }
+        }
+      }
+
+      // --- CHECK 3: Multi-group proportional sharing ---
+      // "Rohan and Sneha share half equally. Anuj and Priyasi share the remaining half equally"
+      if (!allocations && amountPaise > 0) {
+        const multiGroupRegex = /([A-Za-z0-9_,\s]+?)\s+(?:share|split|consumed?)\s+(half|one[- ]third|1\/2|1\/3|quarter|one[- ]fourth|1\/4|\d+%)\s*(?:equally)?\s*[.,;]?\s*(?:and|while|with)?\s*([A-Za-z0-9_,\s]+?)\s+(?:share|sharing|split|splitting)?\s+(?:the\s+)?(?:remaining\s+half|remainder|rest|remaining)\s*(?:equally)?/i;
+        const multiMatch = workingClause.match(multiGroupRegex);
+        if (multiMatch) {
+          const g1NamesRaw = multiMatch[1];
+          const fracStr = multiMatch[2].toLowerCase();
+          const g2NamesRaw = multiMatch[3];
+
+          let fraction = 0.5;
+          if (fracStr === 'one-third' || fracStr === '1/3') fraction = 1/3;
+          else if (fracStr === 'quarter' || fracStr === 'one-fourth' || fracStr === '1/4') fraction = 0.25;
+
+          const g1 = [];
+          const g2 = [];
+          squadNames.forEach(n => {
+            if (new RegExp(`\\b${n}\\b`, 'i').test(g1NamesRaw) && !excluded.includes(n)) g1.push(n);
+            if (new RegExp(`\\b${n}\\b`, 'i').test(g2NamesRaw) && !excluded.includes(n)) g2.push(n);
+          });
+
+          if (g1.length > 0 && g2.length > 0) {
+            const g1TotalPaise = Math.round(amountPaise * fraction);
+            const g2TotalPaise = amountPaise - g1TotalPaise;
+
+            const g1Base = Math.floor(g1TotalPaise / g1.length);
+            const g2Base = Math.floor(g2TotalPaise / g2.length);
+
+            allocations = {};
+            g1.forEach(m => allocations[m] = g1Base);
+            g2.forEach(m => allocations[m] = g2Base);
+
+            splitType = 'proportional';
+            included = Object.keys(allocations);
+            squadNames.forEach(name => {
+              if (!included.includes(name) && !excluded.includes(name)) {
+                excluded.push(name);
+              }
+            });
+          }
+        }
+      }
+
+      // --- CHECK 4: Single consumer proportional pattern ---
+      // "David consumed half while Rahul and Aisha shared the remainder"
+      if (!allocations && amountPaise > 0) {
+        const propRegexA = /\b([A-Za-z0-9_]+)\s+consumed\s+(half|one[- ]third|one[- ]fourth|quarter|1\/2|1\/3|1\/4|\d+%)\s*(?:,\s*|\s+)?while\s+([A-Za-z0-9_,\s]+?)\s+shared\s+(?:the\s+)?remainder/i;
+        const propRegexB = /\b(half|one[- ]third|one[- ]fourth|quarter|1\/2|1\/3|1\/4|\d+%)\s+consumed\s+by\s+([A-Za-z0-9_]+)\s*(?:,\s*|\s+)?while\s+([A-Za-z0-9_,\s]+?)\s+shared\s+(?:the\s+)?remainder/i;
+
+        const propMatchA = workingClause.match(propRegexA);
+        const propMatchB = !propMatchA ? workingClause.match(propRegexB) : null;
+
+        if (propMatchA || propMatchB) {
+          const consumerNameRaw = propMatchA ? propMatchA[1] : propMatchB[2];
+          const fracStr = (propMatchA ? propMatchA[2] : propMatchB[1]).toLowerCase();
+          const remainderRaw = propMatchA ? propMatchA[3] : propMatchB[3];
+
+          let fraction = 0.5;
+          if (fracStr === 'one-third' || fracStr === '1/3') fraction = 1 / 3;
+          else if (fracStr === 'one-fourth' || fracStr === 'quarter' || fracStr === '1/4' || fracStr === '25%') fraction = 0.25;
+          else if (fracStr.endsWith('%')) fraction = parseFloat(fracStr) / 100;
+
+          const consumerCanonical = squadLowerMap[consumerNameRaw.toLowerCase()];
+          if (!consumerCanonical) {
+            unresolved.push(consumerNameRaw);
+            warnings.push(`Unknown consumer "${consumerNameRaw}" in proportional allocation.`);
+          } else {
+            const remainderMembers = [];
+            squadNames.forEach(name => {
+              if (new RegExp(`\\b${name}\\b`, 'i').test(remainderRaw)) {
+                if (!remainderMembers.includes(name)) remainderMembers.push(name);
+              }
+            });
+
+            if (remainderMembers.length === 0) {
+              warnings.push('Could not determine who shares the remainder.');
+            } else {
+              const propPaise = Math.round(amountPaise * fraction);
+              const remainderPaise = amountPaise - propPaise;
+              const rBase = Math.floor(remainderPaise / remainderMembers.length);
+
+              allocations = {};
+              allocations[consumerCanonical] = propPaise;
+              remainderMembers.forEach(m => {
+                allocations[m] = (allocations[m] || 0) + rBase;
+              });
+
+              splitType = 'proportional';
+              included = Object.keys(allocations);
+            }
+          }
+        }
+      }
+
+      // --- CHECK 5: Itemized / Specific portion pattern ---
       if (!allocations && amountPaise > 0) {
         const itemRegex = /\bincluding\s+(?:a\s+)?(?:specific\s+)?(?:₹|rs\.?|inr)?\s*(\b\d{1,3}(?:,\d{2,3})*(?:\.\d{1,2})?\b|\b\d+(?:\.\d{1,2})?\b)\s*(?:meal|item|drink|portion|share)?\s*(?:for|to)\s+([A-Za-z0-9_]+)[^,]*,?\s*with\s+the\s+remaining\s*(?:(?:₹|rs\.?|inr)?\s*(\b\d{1,3}(?:,\d{2,3})*(?:\.\d{1,2})?\b|\b\d+(?:\.\d{1,2})?\b)\s*)?shared\s*(?:by|among|according\s+to\s+the\s+stated\s+rule)?\s*([^.]+)?/i;
         const itemMatch = workingClause.match(itemRegex);
@@ -314,27 +523,18 @@
         if (itemMatch) {
           const specAmtStr = itemMatch[1].replace(/,/g, '');
           const specBeneficiaryRaw = itemMatch[2];
-          const remAmtStr = itemMatch[3] ? itemMatch[3].replace(/,/g, '') : null;
           const remContext = itemMatch[4] || '';
 
-          const specPaise = Money.toPaise(specAmtStr);
+          const specPaise = Math.round(parseFloat(specAmtStr) * 100);
           const specBeneficiary = squadLowerMap[specBeneficiaryRaw.toLowerCase()];
 
           if (!specBeneficiary) {
             unresolved.push(specBeneficiaryRaw);
             warnings.push(`Unknown participant "${specBeneficiaryRaw}" for specific portion.`);
           } else if (specPaise >= amountPaise) {
-            warnings.push(`Specific portion (₹${specAmtStr}) cannot exceed total amount (₹${amountRupees}).`);
+            warnings.push(`Specific portion cannot exceed total amount.`);
           } else {
             const remPaise = amountPaise - specPaise;
-            if (remAmtStr) {
-              const statedRemPaise = Money.toPaise(remAmtStr);
-              if (statedRemPaise !== remPaise) {
-                warnings.push(`Stated remaining amount (₹${remAmtStr}) does not match remaining balance (₹${remPaise / 100}).`);
-              }
-            }
-
-            // Who shares the remainder?
             let remMembers = [];
             squadNames.forEach(name => {
               if (new RegExp(`\\b${name}\\b`, 'i').test(remContext)) {
@@ -342,7 +542,6 @@
               }
             });
 
-            // If context mentions "everyone", "all", "squad", "stated rule", or no specific names
             if (remMembers.length === 0 || /(?:everyone|everybody|all|squad|stated\s+rule)/i.test(remContext) || !remContext.trim()) {
               remMembers = squadNames.filter(n => !excluded.includes(n));
             }
@@ -350,10 +549,10 @@
             if (remMembers.length === 0) {
               warnings.push('No participants found to share the remaining amount.');
             } else {
-              const remShares = Ledger.calculateEqualShares(remPaise, remMembers);
+              const remBase = Math.floor(remPaise / remMembers.length);
               allocations = {};
               remMembers.forEach(m => {
-                allocations[m] = remShares[m].sharePaise;
+                allocations[m] = remBase;
               });
               allocations[specBeneficiary] = (allocations[specBeneficiary] || 0) + specPaise;
 
@@ -364,19 +563,15 @@
         }
       }
 
-      // C. Standard Equal Split (if no custom allocations)
+      // --- CHECK 6: Default Equal Split ---
       if (!allocations) {
         splitType = 'equal';
-        const clauseWithoutExclusion = exclusionMatch
-          ? workingClause.slice(0, exclusionMatch.index) + ' ' + workingClause.slice(exclusionMatch.index + exclusionMatch[0].length)
-          : workingClause;
-
-        const isForAll = /(?:for\s+all(?:\s+of\s+us)?|for\s+everyone|for\s+everybody|for\s+the\s+group|shared\s+by\s+everyone|shared\s+by\s+all|split\s+between\s+all|for\s+whole\s+squad|for\s+us\s+all|for\s+all\s+three|for\s+all\s+\d+|among\s+all(?:\s+\w+)?\s+members?|for\s+all(?:\s+\w+)?\s+members?|shared\s+equally\s+among\s+all(?:\s+\w+)?\s+members?)/i.test(clauseWithoutExclusion);
+        const isForAll = /(?:for\s+all(?:\s+of\s+us)?|for\s+everyone|for\s+everybody|for\s+the\s+group|shared\s+by\s+everyone|shared\s+by\s+all|split\s+between\s+all|for\s+whole\s+squad|for\s+us\s+all|for\s+all\s+three|for\s+all\s+\d+|among\s+all(?:\s+\w+)?\s+members?|for\s+all(?:\s+\w+)?\s+members?|shared\s+equally\s+among\s+all(?:\s+\w+)?\s+members?)/i.test(workingClause);
 
         if (isForAll) {
           included = squadNames.filter(n => !excluded.includes(n));
         } else {
-          const forMatch = clauseWithoutExclusion.match(/(?:for|between|split\s+between|split\s+by|shared\s+by|shared\s+equally\s+among|among)\s+([^.]+)/i);
+          const forMatch = workingClause.match(/(?:for|between|split\s+between|split\s+by|shared\s+by|shared\s+equally\s+among|among)\s+([^.]+)/i);
           let foundSpecific = false;
 
           if (forMatch) {
@@ -390,7 +585,6 @@
               }
             });
 
-            // Reflexive pronouns (e.g. "for himself and Plaban")
             if (payer && /(?:himself|herself|themself|myself)/i.test(forClause)) {
               if (!included.includes(payer) && !excluded.includes(payer)) {
                 included.push(payer);
@@ -399,7 +593,6 @@
             }
           }
 
-          // If no explicit inclusion list was found, default to everyone minus excluded members
           if (!foundSpecific) {
             included = squadNames.filter(n => !excluded.includes(n));
           }
@@ -410,20 +603,32 @@
         }
       }
 
-      // 5. Clean Description / Merchant Extraction
+      // 5. Clean Description Extraction
       let desc = workingClause;
+      desc = desc.replace(/^\s*(?:\d+[\.\)]\s*|[-*•]\s*)/, '').trim();
+      desc = desc.replace(/^(?:finally|later|then|after that|afterward|meanwhile|next|also|furthermore|additionally|plus|subsequently|lastly),?\s*/i, '').trim();
+
       if (payer) {
-        desc = desc.replace(new RegExp(`(?:paid|bought|spent|covered)\\s+by\\s+${payer}`, 'gi'), '');
-        desc = desc.replace(new RegExp(`\\b${payer}\\b\\s+(?:paid|spent|bought|covered|gave|chipped\\s*in|transferred|ordered)?`, 'gi'), '');
+        const leadPayerRegex = new RegExp('^\\s*(?:(?:paid|bought|spent|covered)\\s+by\\s+' + payer + '|' + payer + '\\s*(?:[:\\—\\–\\-]|paid|spent|bought|covered|gave|chipped\\s*in|transferred|ordered)?)\\s*', 'i');
+        desc = desc.replace(leadPayerRegex, '');
+        const trailPayerRegex = new RegExp('\\s+(?:paid|bought|spent|covered)\\s+by\\s+' + payer + '\\b', 'i');
+        desc = desc.replace(trailPayerRegex, '');
       }
+
       desc = desc.replace(/(?:₹|rs\.?|inr)?\s*[0-9]{1,3}(?:,[0-9]{2,3})*(?:\.[0-9]{1,2})?\s*(?:₹|rs\.?|inr|bucks|rupees)?/gi, '');
-      desc = desc.replace(/(?:except|without|excluding|minus|leaving\s+out|not\s+including)\s+[^.,;!]+/gi, '');
-      desc = desc.replace(/(?:for|between|split\s+between|split\s+by|shared\s+by|among)\s+(?:all(?:\s+of\s+us)?|everyone|everybody|the\s+group|all\s+the\s+squad|whole\s+squad|all\s+three|all\s+\d+)/gi, '');
-      desc = desc.replace(/\b(?:and\s+)?([A-Za-z0-9_]+)\s+consumed\s+.*$/i, '');
+      desc = desc.replace(/(?:except|without|excluding|minus|leaving\s+out|not\s+including)\s+[^.!?]+/gi, '');
+      desc = desc.replace(/(?:shared|split)\s+(?:equally\s+)?(?:by|among|between)\s+[^.!?]+/gi, '');
+      desc = desc.replace(/(?:for|between|among)\s+(?:all(?:\s+of\s+us)?|everyone|everybody|the\s+group|all\s+the\s+squad|whole\s+squad|all\s+three|all\s+\d+|six\s+registered\s+members|all\s+six\s+registered\s+members)[^.!?]*/gi, '');
+      desc = desc.replace(/\ballocated\s+.*$/i, '');
+      desc = desc.replace(/\b(?:and\s+)?[A-Za-z0-9_]+\s+consumed\s+.*$/i, '');
       desc = desc.replace(/\bincluding\s+.*$/i, '');
-      desc = desc.replace(/^\s*(?:for|and|then|also|on|ate|had|bought|shared\s+equally\s+by)\s+/gi, '')
-                 .replace(/\s+(?:for|and|by|shared\s+by)\s*$/gi, '')
-                 .replace(/^[.,;!\s]+|[.,;!\s]+$/g, '')
+      desc = desc.replace(/[A-Za-z0-9_,\s]+?\s+share\s+half\s+.*$/i, '');
+      desc = desc.replace(/\bsplit\s+.*each\s+.*$/i, '');
+      desc = desc.replace(/\b(?:with\s+)?(?:the\s+)?other\s+(?:three|two|four|\d+)\s+excluded.*$/i, '');
+
+      desc = desc.replace(/^\s*(?:for|and|then|also|on|ate|had|bought|at|[:\—\–\-])\s+/gi, '')
+                 .replace(/\s+(?:for|and|by|shared\s+by|at)\s*$/gi, '')
+                 .replace(/^[.,;!\s\—\–\-]+|[.,;!\s\—\–\-]+$/g, '')
                  .replace(/\s+/g, ' ')
                  .trim();
 
@@ -442,42 +647,18 @@
         excluded,
         unresolved,
         warnings,
-        confidence: (warnings.length === 0 && unresolved.length === 0 && payer && payer !== 'Unresolved') ? 'high' : 'low'
+        confidence: (warnings.length === 0 && unresolved.length === 0 && payer && payer !== 'Unresolved' && amountPaise > 0) ? 'high' : 'low'
       };
     },
 
-    /**
-     * Parses a complete narrative story and returns structured candidate expenses.
-     * Binds standalone exclusion clauses (e.g. "Priyasi is excluded.") to the preceding expense.
-     */
     parseStory(storyText, squadNames = []) {
       const clauses = this.splitStoryIntoClauses(storyText, squadNames);
       const expenses = [];
 
-      const standaloneExclusionPattern = /^(?:([^.,;!]+)\s+(?:is|was|were|are)\s+(?:excluded|not\s+included|left\s+out|omitted)|(?:excluding|except|without|leaving\s+out|not\s+including)\s+([^.,;!]+)|([^.,;!]+)\s+did\s+not\s+(?:have|eat|drink|join|partake|participate|share|take|come))/i;
-
       clauses.forEach((clause) => {
-        // Check if this clause is a standalone exclusion annotation for the preceding expense
-        const exclMatch = clause.match(standaloneExclusionPattern);
-        if (exclMatch && expenses.length > 0) {
-          const hasAmount = /(?:₹|rs\.?|inr)?\s*(\b\d{1,3}(?:,\d{2,3})*(?:\.\d{1,2})?\b|\b\d+(?:\.\d{1,2})?\b)/i.test(clause);
-          if (!hasAmount) {
-            const namesStr = exclMatch[1] || exclMatch[2] || exclMatch[3] || '';
-            const prev = expenses[expenses.length - 1];
-            squadNames.forEach(name => {
-              if (new RegExp('\\b' + name + '\\b', 'i').test(namesStr)) {
-                if (!prev.excluded.includes(name)) prev.excluded.push(name);
-                prev.included = prev.included.filter(n => n.toLowerCase() !== name.toLowerCase());
-              }
-            });
-            prev.raw += '. ' + clause;
-            return; // Attached to previous expense; do not emit as standalone expense
-          }
-        }
-
         const item = this.parseClause(clause, squadNames);
-        // Ignore pure zero-rupee empty clauses if confidence is low and no financial keywords
-        if (item.amountPaise <= 0 && item.confidence === 'low' && !item.raw.match(/₹|rs|inr|paid|spent|bought|covered|cost/i)) {
+        // Strictly ignore zero-amount or non-financial items
+        if (item.amountPaise <= 0) {
           return;
         }
 
@@ -490,9 +671,6 @@
       return expenses;
     },
 
-    /**
-     * Helper for discovery of potential squad names. Never returns blacklisted non-participant terms.
-     */
     discoverNames(storyText, squadNames = []) {
       return []; // Intentionally return empty: participant creation must be separate from expense parsing
     }
