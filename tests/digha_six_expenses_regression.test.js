@@ -281,3 +281,139 @@ test('Test 9: Handles currency variations and diverse phrasing without failure',
     assert.equal(p.included.includes('Sneha'), false);
   });
 });
+
+
+// --- TEST 10: USER REQUIRED EXAMPLE (PASSIVE MULTI-GROUP ALLOCATION) ---
+test('Test 10: User required example: passive half/remaining-half splits ₹600 into ₹150 each for 4 members', () => {
+  const story = 'Rohan paid ₹600 for snacks. Half the snacks cost was consumed by Rohan and Sneha equally, and the remaining half was consumed by Anuj and Priyasi equally.';
+
+  const expenses = Parser.parseStory(story, SQUAD_NAMES);
+  assert.equal(expenses.length, 1, 'Must parse exactly 1 expense');
+
+  const exp = expenses[0];
+  assert.equal(exp.payer, 'Rohan');
+  assert.equal(exp.amountPaise, 60000);
+  assert.equal(exp.description, 'Snacks');
+  assert.equal(exp.splitType, 'proportional');
+  assert.ok(exp.allocations);
+
+  // Exact ₹150 shares
+  assert.equal(exp.allocations['Rohan'], 15000);
+  assert.equal(exp.allocations['Sneha'], 15000);
+  assert.equal(exp.allocations['Anuj'], 15000);
+  assert.equal(exp.allocations['Priyasi'], 15000);
+
+  // Excluded members consume ₹0
+  assert.equal(exp.allocations['Plaban'] || 0, 0);
+  assert.equal(exp.allocations['Arkadeep'] || 0, 0);
+
+  // Sum of allocations must equal 60,000 paise exactly
+  const sumAlloc = Object.values(exp.allocations).reduce((a, b) => a + b, 0);
+  assert.equal(sumAlloc, 60000);
+
+  // Verify Ledger calculations: Rohan is payer (+450), other 3 pay -150 each, Plaban & Arka 0
+  const balances = Ledger.computeBalances(SQUAD_OBJECTS, expenses);
+  const totals = balances.memberTotals;
+
+  assert.equal(totals['Rohan'].paidPaise, 60000);
+  assert.equal(totals['Rohan'].consumedPaise, 15000);
+  assert.equal(totals['Rohan'].netPaise, 45000);
+
+  assert.equal(totals['Sneha'].paidPaise, 0);
+  assert.equal(totals['Sneha'].consumedPaise, 15000);
+  assert.equal(totals['Sneha'].netPaise, -15000);
+
+  assert.equal(totals['Anuj'].paidPaise, 0);
+  assert.equal(totals['Anuj'].consumedPaise, 15000);
+  assert.equal(totals['Anuj'].netPaise, -15000);
+
+  assert.equal(totals['Priyasi'].paidPaise, 0);
+  assert.equal(totals['Priyasi'].consumedPaise, 15000);
+  assert.equal(totals['Priyasi'].netPaise, -15000);
+
+  assert.equal(totals['Plaban'].paidPaise, 0);
+  assert.equal(totals['Plaban'].consumedPaise, 0);
+  assert.equal(totals['Plaban'].netPaise, 0);
+
+  assert.equal(totals['Arkadeep'].paidPaise, 0);
+  assert.equal(totals['Arkadeep'].consumedPaise, 0);
+  assert.equal(totals['Arkadeep'].netPaise, 0);
+
+  // Net sum zero
+  const netSum = Object.values(totals).reduce((acc, m) => acc + m.netPaise, 0);
+  assert.equal(netSum, 0);
+});
+
+// --- TEST 11: MISSING AMOUNTS AND PAYERS ARE FLAGGED SAFELY ---
+test('Test 11: Missing amounts and unresolved payers are safely flagged without crashing', () => {
+  // Missing amount
+  const p1 = Parser.parseClause('Anuj paid for snacks for everyone', SQUAD_NAMES);
+  assert.equal(p1.payer, 'Anuj');
+  assert.equal(p1.amountPaise, 0);
+  assert.ok(p1.warnings.some(w => w.includes('Expense amount could not be determined')));
+  assert.equal(p1.confidence, 'low');
+
+  // Missing payer
+  const p2 = Parser.parseClause('Paid ₹450 for lunch for all', SQUAD_NAMES);
+  assert.equal(p2.payer, 'Unresolved');
+  assert.equal(p2.amountPaise, 45000);
+  assert.ok(p2.warnings.some(w => w.includes('Payer could not be determined')));
+  assert.equal(p2.confidence, 'low');
+});
+
+// --- TEST 12: EDITING AN EXPENSE AND DERIVED RECALCULATION ---
+test('Test 12: Editing an expense amount updates all derived balances deterministically', () => {
+  const expenses = [
+    {
+      id: 'e1',
+      payer: 'Anuj',
+      amountPaise: 360000,
+      description: 'Hotel',
+      included: ['Anuj', 'Priyasi', 'Plaban', 'Arkadeep', 'Rohan'],
+      excluded: ['Sneha']
+    }
+  ];
+
+  let b1 = Ledger.computeBalances(SQUAD_OBJECTS, expenses);
+  assert.equal(b1.totalSpendPaise, 360000);
+  assert.equal(b1.memberTotals['Anuj'].netPaise, 288000); // 3600 - 720 = 2880
+
+  // Edit amount from ₹3600 to ₹4000 (800 each)
+  expenses[0].amountPaise = 400000;
+  let b2 = Ledger.computeBalances(SQUAD_OBJECTS, expenses);
+  assert.equal(b2.totalSpendPaise, 400000);
+  assert.equal(b2.memberTotals['Anuj'].netPaise, 320000); // 4000 - 800 = 3200
+  assert.equal(b2.memberTotals['Priyasi'].netPaise, -80000);
+});
+
+// --- TEST 13: OUTING SERIALIZATION & RESTORATION OF CUSTOM ALLOCATIONS ---
+test('Test 13: Outing with custom allocations serializes and deserializes accurately', () => {
+  const originalOuting = {
+    id: 'outing_digha_test',
+    title: 'Digha Trip',
+    date: '2026-10-24',
+    squad: SQUAD_OBJECTS,
+    expenses: [
+      {
+        id: 'exp_seafood',
+        payer: 'Arkadeep',
+        amountPaise: 150000,
+        description: 'Seafood',
+        splitType: 'custom',
+        allocations: { Anuj: 30000, Priyasi: 45000, Plaban: 75000 }
+      }
+    ]
+  };
+
+  const jsonStr = JSON.stringify(originalOuting);
+  const restored = JSON.parse(jsonStr);
+
+  const balances = Ledger.computeBalances(restored.squad, restored.expenses);
+  assert.equal(balances.totalSpendPaise, 150000);
+  assert.equal(balances.memberTotals['Anuj'].consumedPaise, 30000);
+  assert.equal(balances.memberTotals['Priyasi'].consumedPaise, 45000);
+  assert.equal(balances.memberTotals['Plaban'].consumedPaise, 75000);
+  assert.equal(balances.memberTotals['Arkadeep'].paidPaise, 150000);
+  assert.equal(balances.memberTotals['Arkadeep'].consumedPaise, 0);
+  assert.equal(balances.memberTotals['Arkadeep'].netPaise, 150000);
+});

@@ -171,8 +171,8 @@
 
         // If we have an active transaction block, check if this is an allocation/exclusion/sharing continuation
         if (currentBlock.length > 0) {
-          const isContinuation = /^(?:allocated|split|share|sharing|consumed|portion|each|except|excluding|without|minus|leaving|the\s+other|with\s+the\s+other|[A-Za-z0-9_]+\s*(?:₹|rs\.?|inr)?\s*\d+)/i.test(sentence)
-            || /(?:share\s+half|remaining\s+half|remainder|excluded|not\s+included)/i.test(sentence);
+          const isContinuation = /^(?:allocated|split|share|sharing|consumed|portion|each|except|excluding|without|minus|leaving|the\s+other|with\s+the\s+other|half|one[- ]third|two[- ]thirds|quarter|one[- ]fourth|1\/2|1\/3|2\/3|1\/4|3\/4|\d+%|[A-Za-z0-9_]+\s*(?:₹|rs\.?|inr)?\s*\d+)/i.test(sentence)
+            || /(?:share\s+half|remaining\s+half|other\s+half|remainder|rest|excluded|not\s+included|consumed\s+by|each\s+among)/i.test(sentence);
 
           if (isContinuation) {
             currentBlock.push(sentence);
@@ -421,19 +421,28 @@
         }
       }
 
-      // --- CHECK 3: Multi-group proportional sharing ---
-      // "Rohan and Sneha share half equally. Anuj and Priyasi share the remaining half equally"
+      // --- CHECK 3: Multi-group proportional sharing (Active and Passive phrasing) ---
+      // e.g. Active: "Rohan and Sneha share half equally. Anuj and Priyasi share the remaining half equally"
+      // e.g. Passive: "Half the snacks cost was consumed by Rohan and Sneha equally, and the remaining half was consumed by Anuj and Priyasi equally"
       if (!allocations && amountPaise > 0) {
-        const multiGroupRegex = /([A-Za-z0-9_,\s]+?)\s+(?:share|split|consumed?)\s+(half|one[- ]third|1\/2|1\/3|quarter|one[- ]fourth|1\/4|\d+%)\s*(?:equally)?\s*[.,;]?\s*(?:and|while|with)?\s*([A-Za-z0-9_,\s]+?)\s+(?:share|sharing|split|splitting)?\s+(?:the\s+)?(?:remaining\s+half|remainder|rest|remaining)\s*(?:equally)?/i;
-        const multiMatch = workingClause.match(multiGroupRegex);
-        if (multiMatch) {
-          const g1NamesRaw = multiMatch[1];
-          const fracStr = multiMatch[2].toLowerCase();
-          const g2NamesRaw = multiMatch[3];
+        const activeRegex = /([A-Za-z0-9_,\s]+?)\s+(?:share|sharing|split|splitting|consumed?|took)\s+(half|one[- ]third|two[- ]thirds|1\/2|1\/3|2\/3|quarter|one[- ]fourth|1\/4|3\/4|\d+%)\s*(?:equally)?\s*[.,;]?\s*(?:and|while|with)?\s*([A-Za-z0-9_,\s]+?)\s+(?:share|sharing|split|splitting|consumed?|took)?\s*(?:the\s+)?(?:remaining\s+half|other\s+half|remainder|rest|remaining)\s*(?:equally)?/i;
+
+        const passiveRegex = /(half|one[- ]third|two[- ]thirds|1\/2|1\/3|2\/3|quarter|one[- ]fourth|1\/4|3\/4|\d+%)(?:\s+(?:of\s+)?(?:the\s+)?(?:[A-Za-z0-9_]+\s+)*(?:cost|bill|amount|expense|total|price)?)?\s+(?:was|were|is|are)?\s*(?:consumed|split|shared|divided|for|by)\s+(?:by\s+)?([A-Za-z0-9_,\s]+?)\s*(?:equally)?\s*[.,;]?\s*(?:and|while|with)?\s*(?:the\s+)?(?:remaining\s+half|other\s+half|remainder|rest|remaining)\s+(?:was|were|is|are)?\s*(?:consumed|split|shared|divided|for|by)\s+(?:by\s+)?([^.!?]+?)(?:\s+equally)?(?:[.!?,;]|$)/i;
+
+        const mActive = workingClause.match(activeRegex);
+        const mPassive = !mActive ? workingClause.match(passiveRegex) : null;
+
+        if (mActive || mPassive) {
+          const g1NamesRaw = mActive ? mActive[1] : mPassive[2];
+          const fracStr = (mActive ? mActive[2] : mPassive[1]).toLowerCase();
+          const g2NamesRaw = mActive ? mActive[3] : mPassive[3];
 
           let fraction = 0.5;
-          if (fracStr === 'one-third' || fracStr === '1/3') fraction = 1/3;
-          else if (fracStr === 'quarter' || fracStr === 'one-fourth' || fracStr === '1/4') fraction = 0.25;
+          if (fracStr === 'one-third' || fracStr === '1/3') fraction = 1 / 3;
+          else if (fracStr === 'two-thirds' || fracStr === '2/3') fraction = 2 / 3;
+          else if (fracStr === 'quarter' || fracStr === 'one-fourth' || fracStr === '1/4' || fracStr === '25%') fraction = 0.25;
+          else if (fracStr === 'three-fourths' || fracStr === '3/4' || fracStr === '75%') fraction = 0.75;
+          else if (fracStr.endsWith('%')) fraction = parseFloat(fracStr) / 100;
 
           const g1 = [];
           const g2 = [];
@@ -446,12 +455,16 @@
             const g1TotalPaise = Math.round(amountPaise * fraction);
             const g2TotalPaise = amountPaise - g1TotalPaise;
 
-            const g1Base = Math.floor(g1TotalPaise / g1.length);
-            const g2Base = Math.floor(g2TotalPaise / g2.length);
+            const g1Shares = Ledger.calculateEqualShares(g1TotalPaise, g1);
+            const g2Shares = Ledger.calculateEqualShares(g2TotalPaise, g2);
 
             allocations = {};
-            g1.forEach(m => allocations[m] = g1Base);
-            g2.forEach(m => allocations[m] = g2Base);
+            g1.forEach(m => {
+              allocations[m] = g1Shares[m].sharePaise;
+            });
+            g2.forEach(m => {
+              allocations[m] = g2Shares[m].sharePaise;
+            });
 
             splitType = 'proportional';
             included = Object.keys(allocations);
@@ -625,6 +638,7 @@
       desc = desc.replace(/[A-Za-z0-9_,\s]+?\s+share\s+half\s+.*$/i, '');
       desc = desc.replace(/\bsplit\s+.*each\s+.*$/i, '');
       desc = desc.replace(/\b(?:with\s+)?(?:the\s+)?other\s+(?:three|two|four|\d+)\s+excluded.*$/i, '');
+      desc = desc.replace(/\b(?:half|one[- ]third|two[- ]thirds|quarter|one[- ]fourth|1\/2|1\/3|2\/3|1\/4|3\/4|\d+%)\s+.*$/i, '');
 
       desc = desc.replace(/^\s*(?:for|and|then|also|on|ate|had|bought|at|[:\—\–\-])\s+/gi, '')
                  .replace(/\s+(?:for|and|by|shared\s+by|at)\s*$/gi, '')
