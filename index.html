@@ -480,18 +480,6 @@
           </button>
         </div>
       </div>
-
-      <!-- Discovered Squad Notification Banner -->
-      <div id="discovered-names-banner" class="hidden mt-4 p-3 rounded-xl bg-amberGlow/10 border border-amberGlow/30 flex items-center justify-between gap-3 text-xs">
-        <div class="flex items-center gap-2 text-amberGlow">
-          <span>🔍</span>
-          <span>Story me kuch naye dost mile jo Squad me nahi hain:</span>
-          <span id="discovered-names-chips" class="flex flex-wrap gap-1 font-semibold text-white"></span>
-        </div>
-        <button id="btn-add-discovered-names" class="px-2.5 py-1 rounded bg-amberGlow text-obsidian font-bold hover:bg-amber-400 transition whitespace-nowrap">
-          + Sabko Squad Me Add Karo
-        </button>
-      </div>
     </section>
 
     <!-- ========================================== -->
@@ -1291,9 +1279,6 @@
         // Parse narrative into candidate expenses
         this.candidateExpenses = Parser.parseStory(story, squadNames);
 
-        // Check for missing squad members mentioned in the story
-        this.checkDiscoveredStoryNames();
-
         this.updateReviewSection();
 
         if (scroll) {
@@ -1311,11 +1296,29 @@
           return;
         }
 
-        // Validate items before committing
-        const hasInvalid = this.candidateExpenses.some(c => c.amountPaise <= 0 || !c.payer || c.payer === 'Unresolved');
-        if (hasInvalid) {
-          this.showToast('Kuch items me payer ya amount check karne ki zaroorat hai! ⚠️', 'error');
-          return;
+        // Validate all candidate expenses strictly before committing to ledger
+        const squadNamesLower = this.outing.squad.map(s => s.name.toLowerCase());
+        for (let i = 0; i < this.candidateExpenses.length; i++) {
+          const c = this.candidateExpenses[i];
+          if (c.amountPaise <= 0) {
+            this.showToast(`Kharcha #${i + 1} ("${c.description}") ka amount valid hona chahiye! ⚠️`, 'error');
+            return;
+          }
+          if (!c.payer || c.payer === 'Unresolved' || !squadNamesLower.includes(c.payer.toLowerCase())) {
+            this.showToast(`Kharcha #${i + 1} ("${c.description}") me payer "${c.payer || 'Unresolved'}" squad ka member hona chahiye! Edit karke choose karein. ⚠️`, 'error');
+            return;
+          }
+          if (c.unresolved && c.unresolved.length > 0) {
+            this.showToast(`Kharcha #${i + 1} me unresolved references hain: ${c.unresolved.join(', ')}. Edit karke registered dost select karein! ⚠️`, 'error');
+            return;
+          }
+          if (c.allocations) {
+            const sum = Object.values(c.allocations).reduce((a, b) => a + b, 0);
+            if (sum !== c.amountPaise) {
+              this.showToast(`Kharcha #${i + 1} ke shares (${Money.formatINR(sum)}) total amount (${Money.formatINR(c.amountPaise)}) se match nahi ho rahe! ⚠️`, 'error');
+              return;
+            }
+          }
         }
 
         this.outing.expenses = JSON.parse(JSON.stringify(this.candidateExpenses));
@@ -1325,33 +1328,6 @@
         const target = document.getElementById('section-settlement');
         if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
         this.showToast('Hisab lag gaya! Sab settlements ready hain 🥳', 'success');
-      }
-
-      checkDiscoveredStoryNames() {
-        const banner = document.getElementById('discovered-names-banner');
-        const chipsContainer = document.getElementById('discovered-names-chips');
-        if (!banner || !chipsContainer) return;
-
-        const squadNames = this.outing.squad.map(s => s.name);
-        const discovered = Parser.discoverNames(this.outing.story, squadNames);
-
-        if (discovered.length > 0) {
-          chipsContainer.innerHTML = discovered.map(name => `
-            <span class="px-2 py-0.5 rounded bg-surfaceLight border border-amberGlow/40 text-amberGlow text-xs">
-              ${Storage.sanitize(name)}
-            </span>
-          `).join('');
-          banner.classList.remove('hidden');
-
-          document.getElementById('btn-add-discovered-names').onclick = () => {
-            discovered.forEach(name => this.addSquadMember(name));
-            this.showToast(`${discovered.length} naye dost Squad me add ho gaye! 🎉`, 'success');
-            banner.classList.add('hidden');
-            this.triggerReviewAndParse(false);
-          };
-        } else {
-          banner.classList.add('hidden');
-        }
       }
 
       // ========================================
@@ -1551,21 +1527,33 @@
           const formattedAmount = Money.formatINR(exp.amountPaise);
           const forList = exp.included && exp.included.length > 0 ? exp.included.join(', ') : 'All Squad';
           const hasWarning = exp.warnings && exp.warnings.length > 0;
+          const hasUnresolved = (exp.unresolved && exp.unresolved.length > 0) || !exp.payer || exp.payer === 'Unresolved';
           let rawQuote = exp.raw ? exp.raw.trim().replace(/^["']+|["']+$/g, '') : exp.description;
 
+          const splitLabel = exp.splitType === 'proportional' ? 'Proportional Split'
+            : (exp.splitType === 'itemized' ? 'Itemized Split'
+            : (exp.splitType === 'custom' ? 'Custom Split' : 'Equal Split'));
+
           return `
-            <div class="bg-surface border ${hasWarning ? 'border-amberGlow/60 bg-amberGlow/5' : 'border-surfaceBorder hover:border-slate-600'} rounded-2xl p-5 shadow-xl transition-all duration-200 flex flex-col justify-between group relative">
+            <div class="bg-surface border ${hasUnresolved ? 'border-rose-500/60 bg-rose-500/5' : (hasWarning ? 'border-amberGlow/60 bg-amberGlow/5' : 'border-surfaceBorder hover:border-slate-600')} rounded-2xl p-5 shadow-xl transition-all duration-200 flex flex-col justify-between group relative">
               <div>
                 <div class="flex items-start justify-between gap-3">
                   <div class="flex items-center gap-2">
-                    <h4 class="text-base sm:text-lg font-bold text-white tracking-tight">
-                      ${Storage.sanitize(exp.payer)}
+                    <h4 class="text-base sm:text-lg font-bold ${hasUnresolved ? 'text-rose-400' : 'text-white'} tracking-tight">
+                      ${Storage.sanitize(exp.payer || 'Unresolved Payer')}
                     </h4>
-                    ${hasWarning ? `
+                    <span class="px-2 py-0.5 rounded-full bg-surfaceLight border border-surfaceBorder text-[10px] font-semibold text-slate-300">
+                      ${splitLabel}
+                    </span>
+                    ${hasUnresolved ? `
+                      <span class="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 text-[10px] font-bold border border-rose-500/30">
+                        ⚠️ Unresolved
+                      </span>
+                    ` : (hasWarning ? `
                       <span class="px-2 py-0.5 rounded-full bg-amberGlow/20 text-amberGlow text-[10px] font-bold border border-amberGlow/30">
                         ⚠️ Check Karo
                       </span>
-                    ` : ''}
+                    ` : '')}
                   </div>
 
                   <div class="flex items-center gap-2">
@@ -1588,15 +1576,39 @@
                 </div>
 
                 <div class="text-xs text-slate-400 font-normal mt-1 leading-snug">
-                  Item/Kharcha: <strong class="text-slate-200 font-semibold">${Storage.sanitize(exp.description)}</strong>
+                  Item / Merchant: <strong class="text-slate-200 font-semibold">${Storage.sanitize(exp.description)}</strong>
                 </div>
 
                 <div class="text-xs text-slate-400 font-normal mt-1 leading-snug">
                   Kiske liye: <span class="text-slate-300 font-normal">${Storage.sanitize(forList)}</span>
-                  ${exp.excluded && exp.excluded.length > 0 ? `<span class="text-rose-400 text-[11px] block mt-0.5">Chhod kar: ${Storage.sanitize(exp.excluded.join(', '))}</span>` : ''}
+                  ${exp.excluded && exp.excluded.length > 0 ? `<span class="text-rose-400 text-[11px] block mt-0.5">Chhod kar (Excluded): ${Storage.sanitize(exp.excluded.join(', '))}</span>` : ''}
                 </div>
 
-                ${hasWarning ? `
+                ${exp.allocations ? `
+                  <div class="mt-2.5 pt-2 border-t border-surfaceBorder/40">
+                    <div class="text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-1">Individual Shares (Hissa):</div>
+                    <div class="flex flex-wrap gap-1.5">
+                      ${Object.keys(exp.allocations).map(name => `
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surfaceLight border border-surfaceBorder text-[11px] font-mono text-slate-300">
+                          <span class="font-sans text-slate-400 font-medium">${Storage.sanitize(name)}:</span>
+                          <span class="text-amberGlow font-bold">${Money.formatINR(exp.allocations[name])}</span>
+                        </span>
+                      `).join('')}
+                    </div>
+                  </div>
+                ` : (exp.included && exp.included.length > 0 ? `
+                  <div class="mt-2 pt-1.5 border-t border-surfaceBorder/30 text-[11px] text-slate-400">
+                    Equal split: <strong class="text-slate-300 font-mono">~${Money.formatINR(Math.round(exp.amountPaise / exp.included.length))}</strong> each (${exp.included.length} dost)
+                  </div>
+                ` : '')}
+
+                ${hasUnresolved ? `
+                  <div class="mt-2.5 p-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-[11px] text-rose-300">
+                    <strong>⚠️ Unresolved Reference:</strong> ${Storage.sanitize(exp.unresolved && exp.unresolved.length > 0 ? exp.unresolved.join(', ') : 'Payer could not be resolved')}. Click the edit icon to assign a registered squad member.
+                  </div>
+                ` : ''}
+
+                ${hasWarning && !hasUnresolved ? `
                   <div class="mt-2.5 p-2 rounded-lg bg-amberGlow/10 border border-amberGlow/30 text-[11px] text-amberGlow">
                     ${exp.warnings.join(' ')}
                   </div>
@@ -2539,6 +2551,7 @@
             updatedAt: new Date().toISOString()
           };
           this.candidateExpenses = [];
+          this.calculateSettlements(false);
           this.saveState();
           this.renderAll();
           this.showToast('Naya trip shuru ho gaya! ✨', 'info');

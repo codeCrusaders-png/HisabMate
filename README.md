@@ -44,7 +44,9 @@ Splitting bills after a trip, party, or flat dinner in India is notoriously tedi
 
 ## 4. Key Features
 
-- **Client-Side NLP Narrative Parser:** Disambiguates item quantities (e.g. `2 water bottles`) from currency tokens (`for 40 rs`), handles explicit exclusions (`except Priyasi`, `without Ritesh`), and reflexive pronouns (`for himself and Plaban`).
+- **Client-Side NLP Narrative Parser:** Disambiguates item quantities (e.g. `2 water bottles`) from currency tokens (`for 40 rs`), handles explicit exclusions (`except Priyasi`, `without Ritesh`), reflexive pronouns (`for himself and Plaban`), proportional shares (`David consumed half while Rahul and Aisha shared the remainder`), and specific portions (`including a specific ₹250 meal for Aisha, with the remaining ₹600 shared...`).
+- **Strict Participant Isolation & Phantom Protection:** Participant creation is completely decoupled from narrative parsing. Ordinary nouns, locations, transitional words, and merchants (`Airbnb`, `Finally`, `Dinner`, `Cab`, `Uber`, `Swiggy`) can never accidentally become squad members or payers.
+- **Mandatory Interpretation Review:** Step 3 displays an audit review of every interpreted expense, showing payer, amount, merchant/description, included/excluded members, split method, and individual allocation breakdowns with full editing capabilities before ledger commit.
 - **Exact Integer-Paise Arithmetic:** Converts all rupee amounts to integer paise (`Math.round(rupees * 100)`). Eliminates binary floating-point errors.
 - **Deterministic Remainder Allocation:** When splitting $P$ paise among $k$ participants, the remainder $r = P \pmod k$ is allocated deterministically (+1 paisa to the first $r$ members in list order). Total distributed paise identically equals total expenditure.
 - **Dual Settlement Solvers:**
@@ -95,8 +97,10 @@ HisabMate/
 ├── manifest.json       # Web App Manifest for standalone mobile installation
 ├── package.json        # Test runner scripts (zero runtime dependencies)
 ├── tests/
+│   ├── critical_parsing_settlement.test.js # Critical regression suite (Scenarios A-I: Phantom participants, allocations, isolation)
 │   ├── digha_regression.test.js # Prompt master test (Scenarios A-L: Digha balances & transfers)
 │   ├── engine.test.js          # Unit tests (Math, Invariants, Parser, Solvers, Property-based)
+│   └── integration.test.js     # End-to-end integration flows and edge cases
 │   └── integration.test.js     # End-to-end user workflow & edge-case integration tests
 ├── icon.svg            # Scalable vector application logo
 ├── icon-192.png        # 192x192 PWA maskable icon
@@ -193,8 +197,9 @@ Expected output:
 ## 10. Known Limitations & Roadmap
 
 - **Known Limitations:**
-  - Natural language parsing relies on deterministic rules; complex colloquial phrasing or multi-lingual mixing without clear verbs may require manual review in Step 3.
-  - Browser local storage is device-specific and subject to private browsing quota eviction.
+  - **Participant Registration:** Only explicitly registered squad members can be assigned as payers or beneficiaries. Unregistered names or ambiguous nouns are flagged as unresolved for user assignment in Step 3.
+  - **Complex Non-Standard Splits:** Natural language parsing supports equal splits, exclusions (`except X`), proportional consumption (`half / quarter / X%`), and itemized portions (`specific ₹X meal for Y, with remaining shared...`). Highly complex multi-tier equations should be confirmed or customized in the Step 3 review modal.
+  - **Local Storage Scope:** Browser storage is device-specific. To share an outing with friends on another device, use the 1-click **Share Karo** button to copy the encoded URL payload.
 - **Future Roadmap:**
   - Client-side OCR receipt scanner via WebAssembly.
   - Optional peer-to-peer WebRTC state sync between nearby phones.

@@ -3,7 +3,7 @@
  * Cache-first offline execution for zero-cloud expense ledger
  */
 
-const CACHE_NAME = 'hisabmate-v2.0.0';
+const CACHE_NAME = 'hisabmate-v2.1.0';
 
 const PRECACHE_ASSETS = [
   './',
@@ -42,12 +42,28 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch Event - Cache-first with network fallback and dynamic caching
+// Fetch Event - Network-first for navigation, cache-first for static assets
 self.addEventListener('fetch', (event) => {
   // Only intercept GET requests
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
+
+  // Network-First for HTML navigation to ensure users always see latest releases
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match('./index.html').then(res => res || caches.match('./')))
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {

@@ -113,6 +113,18 @@
     },
 
     /**
+     * Terms that represent ordinary nouns, merchants, locations, or descriptions,
+     * which must NEVER be identified as human participants.
+     */
+    NON_PARTICIPANT_TERMS: new Set([
+      'airbnb', 'finally', 'later', 'then', 'dinner', 'lunch', 'breakfast', 'brunch',
+      'cab', 'cabs', 'taxi', 'uber', 'ola', 'drinks', 'beers', 'dessert', 'tickets',
+      'flight', 'hotel', 'food', 'room', 'rooms', 'resort', 'chai', 'coffee', 'swiggy',
+      'zomato', 'blinkit', 'zepto', 'groceries', 'water', 'bottles', 'parking', 'toll',
+      'tolls', 'movie', 'petrol', 'diesel', 'fuel', 'snacks', 'party', 'outing', 'trip'
+    ]),
+
+    /**
      * Parses a single sentence/clause into a structured expense representation.
      */
     parseClause(clause, squadNames = []) {
@@ -122,21 +134,30 @@
       });
 
       const warnings = [];
+      const unresolved = [];
 
-      // 1. Identify Payer
+      // 0. Clean leading transitional adverbs so they don't get parsed as names
+      const workingClause = clause.replace(/^(?:finally|later|then|after that|afterward|meanwhile|next|also|furthermore|additionally|plus|subsequently|lastly),?\s*/i, '').trim();
+
+      // 1. Identify Payer strictly from registered squad members
       let payer = null;
 
       // Pattern A: "paid by <Name>", "bought by <Name>", "covered by <Name>", etc.
-      const paidByMatch = clause.match(/(?:paid|bought|spent|covered|given|handled|chipped\s*in)\s+by\s+([A-Za-z0-9_]+)/i);
-      if (paidByMatch && squadLowerMap[paidByMatch[1].toLowerCase()]) {
-        payer = squadLowerMap[paidByMatch[1].toLowerCase()];
+      const paidByMatch = workingClause.match(/(?:paid|bought|spent|covered|given|handled|chipped\s*in)\s+by\s+([A-Za-z0-9_]+)/i);
+      if (paidByMatch) {
+        const candidate = paidByMatch[1].toLowerCase();
+        if (squadLowerMap[candidate]) {
+          payer = squadLowerMap[candidate];
+        } else if (!this.NON_PARTICIPANT_TERMS.has(candidate)) {
+          unresolved.push(paidByMatch[1]);
+        }
       }
 
       // Pattern B: "<Name> paid/spent/bought/covered..."
       if (!payer) {
         for (const name of squadNames) {
           const regex = new RegExp(`\\b${name}\\b\\s+(?:paid|spent|bought|covered|gave|chipped\\s*in|transferred|ordered|handled)`, 'i');
-          if (regex.test(clause)) {
+          if (regex.test(workingClause)) {
             payer = name;
             break;
           }
@@ -147,9 +168,23 @@
       if (!payer) {
         for (const name of squadNames) {
           const regex = new RegExp(`^${name}\\b`, 'i');
-          if (regex.test(clause) && !/(?:paid|bought|spent|covered)\s+by/i.test(clause)) {
+          if (regex.test(workingClause) && !/(?:paid|bought|spent|covered)\s+by/i.test(workingClause)) {
             payer = name;
             break;
+          }
+        }
+      }
+
+      // Check if sentence starts with an unknown word followed by "paid"
+      if (!payer) {
+        const unknownPayerMatch = workingClause.match(/^([A-Za-z0-9_]+)\s+(?:paid|spent|bought|covered|gave|chipped\s*in)/i);
+        if (unknownPayerMatch) {
+          const candidate = unknownPayerMatch[1].toLowerCase();
+          if (this.NON_PARTICIPANT_TERMS.has(candidate)) {
+            warnings.push(`"${unknownPayerMatch[1]}" is an item/merchant, not a registered participant.`);
+          } else if (!squadLowerMap[candidate]) {
+            unresolved.push(unknownPayerMatch[1]);
+            warnings.push(`Unknown person "${unknownPayerMatch[1]}" mentioned as payer. Only registered squad members can pay.`);
           }
         }
       }
@@ -163,15 +198,15 @@
       let match;
       const candidates = [];
 
-      while ((match = amountRegex.exec(clause)) !== null) {
+      while ((match = amountRegex.exec(workingClause)) !== null) {
         const fullMatch = match[0].trim();
         const numStr = match[1].replace(/,/g, '');
         const numVal = parseFloat(numStr);
         if (isNaN(numVal) || numVal <= 0) continue;
 
         const matchIndex = match.index;
-        const prevContext = clause.slice(Math.max(0, matchIndex - 20), matchIndex).toLowerCase();
-        const nextContext = clause.slice(matchIndex + fullMatch.length, matchIndex + fullMatch.length + 24).toLowerCase();
+        const prevContext = workingClause.slice(Math.max(0, matchIndex - 20), matchIndex).toLowerCase();
+        const nextContext = workingClause.slice(matchIndex + fullMatch.length, matchIndex + fullMatch.length + 24).toLowerCase();
 
         let score = 0;
         // Strong bonus for currency mark
@@ -203,7 +238,7 @@
 
       // 3. Identify Exclusions: "except Priyasi", "without Anuj", "excluding Ritesh"
       const excluded = [];
-      const exclusionMatch = clause.match(/(?:except|without|excluding|minus|leaving\s+out|not\s+including)\s+([^.,;!]+)/i);
+      const exclusionMatch = workingClause.match(/(?:except|without|excluding|minus|leaving\s+out|not\s+including)\s+([^.,;!]+)/i);
       let exclClause = '';
       if (exclusionMatch) {
         exclClause = exclusionMatch[1];
@@ -214,52 +249,169 @@
         });
       }
 
-      // 4. Identify Inclusions / Beneficiaries
+      // 4. Identify Split Method & Allocations
+      let splitType = 'equal';
+      let allocations = null;
       let included = [];
-      const clauseWithoutExclusion = exclusionMatch
-        ? clause.slice(0, exclusionMatch.index) + ' ' + clause.slice(exclusionMatch.index + exclusionMatch[0].length)
-        : clause;
 
-      const isForAll = /(?:for\s+all(?:\s+of\s+us)?|for\s+everyone|for\s+everybody|for\s+the\s+group|shared\s+by\s+everyone|shared\s+by\s+all|split\s+between\s+all|for\s+whole\s+squad|for\s+us\s+all|for\s+all\s+three|for\s+all\s+\d+|among\s+all(?:\s+\w+)?\s+members?|for\s+all(?:\s+\w+)?\s+members?|shared\s+equally\s+among\s+all(?:\s+\w+)?\s+members?)/i.test(clauseWithoutExclusion);
+      // A. Check for Proportional Consumption pattern
+      // e.g. "David consumed half while Rahul and Aisha shared the remainder"
+      const propRegexA = /\b([A-Za-z0-9_]+)\s+consumed\s+(half|one[- ]third|one[- ]fourth|quarter|1\/2|1\/3|1\/4|\d+%)\s*(?:,\s*|\s+)?while\s+([A-Za-z0-9_,\s]+?)\s+shared\s+(?:the\s+)?remainder/i;
+      const propRegexB = /\b(half|one[- ]third|one[- ]fourth|quarter|1\/2|1\/3|1\/4|\d+%)\s+consumed\s+by\s+([A-Za-z0-9_]+)\s*(?:,\s*|\s+)?while\s+([A-Za-z0-9_,\s]+?)\s+shared\s+(?:the\s+)?remainder/i;
 
-      if (isForAll) {
-        included = squadNames.filter(n => !excluded.includes(n));
-      } else {
-        const forMatch = clauseWithoutExclusion.match(/(?:for|between|split\s+between|split\s+by|shared\s+by|shared\s+equally\s+among|among)\s+([^.]+)/i);
-        let foundSpecific = false;
+      const propMatchA = workingClause.match(propRegexA);
+      const propMatchB = !propMatchA ? workingClause.match(propRegexB) : null;
 
-        if (forMatch) {
-          const forClause = forMatch[1];
+      if ((propMatchA || propMatchB) && amountPaise > 0) {
+        const consumerNameRaw = propMatchA ? propMatchA[1] : propMatchB[2];
+        const fracStr = (propMatchA ? propMatchA[2] : propMatchB[1]).toLowerCase();
+        const remainderRaw = propMatchA ? propMatchA[3] : propMatchB[3];
+
+        let fraction = 0;
+        if (fracStr === 'half' || fracStr === '1/2' || fracStr === '50%') fraction = 0.5;
+        else if (fracStr === 'one-third' || fracStr === '1/3') fraction = 1 / 3;
+        else if (fracStr === 'one-fourth' || fracStr === 'quarter' || fracStr === '1/4' || fracStr === '25%') fraction = 0.25;
+        else if (fracStr.endsWith('%')) fraction = parseFloat(fracStr) / 100;
+
+        const consumerCanonical = squadLowerMap[consumerNameRaw.toLowerCase()];
+        if (!consumerCanonical) {
+          unresolved.push(consumerNameRaw);
+          warnings.push(`Unknown consumer "${consumerNameRaw}" in proportional allocation.`);
+        } else {
+          // Identify remainder members
+          const remainderMembers = [];
           squadNames.forEach(name => {
-            if (new RegExp(`\\b${name}\\b`, 'i').test(forClause)) {
-              if (!included.includes(name) && !excluded.includes(name)) {
-                included.push(name);
-                foundSpecific = true;
-              }
+            if (new RegExp(`\\b${name}\\b`, 'i').test(remainderRaw)) {
+              if (!remainderMembers.includes(name)) remainderMembers.push(name);
             }
           });
 
-          // Reflexive pronouns (e.g. "for himself and Plaban")
-          if (payer && /(?:himself|herself|themself|myself)/i.test(forClause)) {
-            if (!included.includes(payer) && !excluded.includes(payer)) {
-              included.push(payer);
-              foundSpecific = true;
+          if (remainderMembers.length === 0) {
+            warnings.push('Could not determine who shares the remainder.');
+          } else {
+            const propPaise = Math.round(amountPaise * fraction);
+            const remainderPaise = amountPaise - propPaise;
+            const remainderShares = Ledger.calculateEqualShares(remainderPaise, remainderMembers);
+
+            allocations = {};
+            allocations[consumerCanonical] = propPaise;
+            remainderMembers.forEach(m => {
+              allocations[m] = (allocations[m] || 0) + remainderShares[m].sharePaise;
+            });
+
+            splitType = 'proportional';
+            included = Object.keys(allocations);
+          }
+        }
+      }
+
+      // B. Check for Itemized / Specific portion pattern
+      // e.g. "including a specific ₹250 meal for Aisha, with the remaining ₹600 shared according to the stated rule"
+      if (!allocations && amountPaise > 0) {
+        const itemRegex = /\bincluding\s+(?:a\s+)?(?:specific\s+)?(?:₹|rs\.?|inr)?\s*(\b\d{1,3}(?:,\d{2,3})*(?:\.\d{1,2})?\b|\b\d+(?:\.\d{1,2})?\b)\s*(?:meal|item|drink|portion|share)?\s*(?:for|to)\s+([A-Za-z0-9_]+)[^,]*,?\s*with\s+the\s+remaining\s*(?:(?:₹|rs\.?|inr)?\s*(\b\d{1,3}(?:,\d{2,3})*(?:\.\d{1,2})?\b|\b\d+(?:\.\d{1,2})?\b)\s*)?shared\s*(?:by|among|according\s+to\s+the\s+stated\s+rule)?\s*([^.]+)?/i;
+        const itemMatch = workingClause.match(itemRegex);
+
+        if (itemMatch) {
+          const specAmtStr = itemMatch[1].replace(/,/g, '');
+          const specBeneficiaryRaw = itemMatch[2];
+          const remAmtStr = itemMatch[3] ? itemMatch[3].replace(/,/g, '') : null;
+          const remContext = itemMatch[4] || '';
+
+          const specPaise = Money.toPaise(specAmtStr);
+          const specBeneficiary = squadLowerMap[specBeneficiaryRaw.toLowerCase()];
+
+          if (!specBeneficiary) {
+            unresolved.push(specBeneficiaryRaw);
+            warnings.push(`Unknown participant "${specBeneficiaryRaw}" for specific portion.`);
+          } else if (specPaise >= amountPaise) {
+            warnings.push(`Specific portion (₹${specAmtStr}) cannot exceed total amount (₹${amountRupees}).`);
+          } else {
+            const remPaise = amountPaise - specPaise;
+            if (remAmtStr) {
+              const statedRemPaise = Money.toPaise(remAmtStr);
+              if (statedRemPaise !== remPaise) {
+                warnings.push(`Stated remaining amount (₹${remAmtStr}) does not match remaining balance (₹${remPaise / 100}).`);
+              }
+            }
+
+            // Who shares the remainder?
+            let remMembers = [];
+            squadNames.forEach(name => {
+              if (new RegExp(`\\b${name}\\b`, 'i').test(remContext)) {
+                if (!remMembers.includes(name) && !excluded.includes(name)) remMembers.push(name);
+              }
+            });
+
+            // If context mentions "everyone", "all", "squad", "stated rule", or no specific names
+            if (remMembers.length === 0 || /(?:everyone|everybody|all|squad|stated\s+rule)/i.test(remContext) || !remContext.trim()) {
+              remMembers = squadNames.filter(n => !excluded.includes(n));
+            }
+
+            if (remMembers.length === 0) {
+              warnings.push('No participants found to share the remaining amount.');
+            } else {
+              const remShares = Ledger.calculateEqualShares(remPaise, remMembers);
+              allocations = {};
+              remMembers.forEach(m => {
+                allocations[m] = remShares[m].sharePaise;
+              });
+              allocations[specBeneficiary] = (allocations[specBeneficiary] || 0) + specPaise;
+
+              splitType = 'itemized';
+              included = Object.keys(allocations);
             }
           }
         }
+      }
 
-        // If no explicit inclusion list was found, default to everyone minus excluded members
-        if (!foundSpecific) {
+      // C. Standard Equal Split (if no custom allocations)
+      if (!allocations) {
+        splitType = 'equal';
+        const clauseWithoutExclusion = exclusionMatch
+          ? workingClause.slice(0, exclusionMatch.index) + ' ' + workingClause.slice(exclusionMatch.index + exclusionMatch[0].length)
+          : workingClause;
+
+        const isForAll = /(?:for\s+all(?:\s+of\s+us)?|for\s+everyone|for\s+everybody|for\s+the\s+group|shared\s+by\s+everyone|shared\s+by\s+all|split\s+between\s+all|for\s+whole\s+squad|for\s+us\s+all|for\s+all\s+three|for\s+all\s+\d+|among\s+all(?:\s+\w+)?\s+members?|for\s+all(?:\s+\w+)?\s+members?|shared\s+equally\s+among\s+all(?:\s+\w+)?\s+members?)/i.test(clauseWithoutExclusion);
+
+        if (isForAll) {
           included = squadNames.filter(n => !excluded.includes(n));
+        } else {
+          const forMatch = clauseWithoutExclusion.match(/(?:for|between|split\s+between|split\s+by|shared\s+by|shared\s+equally\s+among|among)\s+([^.]+)/i);
+          let foundSpecific = false;
+
+          if (forMatch) {
+            const forClause = forMatch[1];
+            squadNames.forEach(name => {
+              if (new RegExp(`\\b${name}\\b`, 'i').test(forClause)) {
+                if (!included.includes(name) && !excluded.includes(name)) {
+                  included.push(name);
+                  foundSpecific = true;
+                }
+              }
+            });
+
+            // Reflexive pronouns (e.g. "for himself and Plaban")
+            if (payer && /(?:himself|herself|themself|myself)/i.test(forClause)) {
+              if (!included.includes(payer) && !excluded.includes(payer)) {
+                included.push(payer);
+                foundSpecific = true;
+              }
+            }
+          }
+
+          // If no explicit inclusion list was found, default to everyone minus excluded members
+          if (!foundSpecific) {
+            included = squadNames.filter(n => !excluded.includes(n));
+          }
+        }
+
+        if (included.length === 0) {
+          warnings.push('No participants included for this expense.');
         }
       }
 
-      if (included.length === 0) {
-        warnings.push('No participants included for this expense.');
-      }
-
-      // 5. Clean Description Extraction
-      let desc = clause;
+      // 5. Clean Description / Merchant Extraction
+      let desc = workingClause;
       if (payer) {
         desc = desc.replace(new RegExp(`(?:paid|bought|spent|covered)\\s+by\\s+${payer}`, 'gi'), '');
         desc = desc.replace(new RegExp(`\\b${payer}\\b\\s+(?:paid|spent|bought|covered|gave|chipped\\s*in|transferred|ordered)?`, 'gi'), '');
@@ -267,8 +419,11 @@
       desc = desc.replace(/(?:₹|rs\.?|inr)?\s*[0-9]{1,3}(?:,[0-9]{2,3})*(?:\.[0-9]{1,2})?\s*(?:₹|rs\.?|inr|bucks|rupees)?/gi, '');
       desc = desc.replace(/(?:except|without|excluding|minus|leaving\s+out|not\s+including)\s+[^.,;!]+/gi, '');
       desc = desc.replace(/(?:for|between|split\s+between|split\s+by|shared\s+by|among)\s+(?:all(?:\s+of\s+us)?|everyone|everybody|the\s+group|all\s+the\s+squad|whole\s+squad|all\s+three|all\s+\d+)/gi, '');
+      desc = desc.replace(/\b(?:and\s+)?([A-Za-z0-9_]+)\s+consumed\s+.*$/i, '');
+      desc = desc.replace(/\bincluding\s+.*$/i, '');
       desc = desc.replace(/^\s*(?:for|and|then|also|on|ate|had|bought|shared\s+equally\s+by)\s+/gi, '')
-                 .replace(/\s+(?:for|and|by)\s*$/gi, '')
+                 .replace(/\s+(?:for|and|by|shared\s+by)\s*$/gi, '')
+                 .replace(/^[.,;!\s]+|[.,;!\s]+$/g, '')
                  .replace(/\s+/g, ' ')
                  .trim();
 
@@ -281,10 +436,13 @@
         payer: payer || 'Unresolved',
         amountRupees,
         amountPaise,
+        splitType,
+        allocations,
         included,
         excluded,
+        unresolved,
         warnings,
-        confidence: warnings.length === 0 ? 'high' : 'low'
+        confidence: (warnings.length === 0 && unresolved.length === 0 && payer && payer !== 'Unresolved') ? 'high' : 'low'
       };
     },
 
@@ -333,27 +491,10 @@
     },
 
     /**
-     * Discovers capitalized words in narrative text that might be missing squad members.
+     * Helper for discovery of potential squad names. Never returns blacklisted non-participant terms.
      */
     discoverNames(storyText, squadNames = []) {
-      if (!storyText || typeof storyText !== 'string') return [];
-      const words = storyText.match(/\b[A-Z][a-z]{2,15}\b/g) || [];
-      const squadSet = new Set(squadNames.map(n => n.toLowerCase()));
-      const stopWords = new Set([
-        'Paid', 'Spent', 'Bought', 'Dinner', 'Lunch', 'Breakfast', 'Food', 'Water',
-        'Bottles', 'Uber', 'Ola', 'Hotel', 'Room', 'Resort', 'Except', 'Without',
-        'Everyone', 'October', 'Friday', 'Saturday', 'Sunday', 'Airtel', 'WiFi',
-        'Rupees', 'Bucks', 'Cash', 'Card', 'Between', 'Among', 'Shared', 'Total',
-        'Bill', 'Dessert', 'Snacks', 'Drinks', 'Coffee', 'Tea', 'Swiggy', 'Zomato'
-      ]);
-
-      const discovered = new Set();
-      words.forEach(w => {
-        if (!squadSet.has(w.toLowerCase()) && !stopWords.has(w)) {
-          discovered.add(w);
-        }
-      });
-      return Array.from(discovered);
+      return []; // Intentionally return empty: participant creation must be separate from expense parsing
     }
   };
 
@@ -402,8 +543,10 @@
      */
     computeBalances(squad, expenses) {
       const memberTotals = {};
+      const squadNames = [];
       squad.forEach(m => {
-        const name = typeof m === 'string' ? m : m.name;
+        const name = typeof m === 'string' ? m.trim() : (m.name || '').trim();
+        if (!name) throw new Error('Registered squad member must have a non-empty name.');
         const upi = typeof m === 'object' && m.upi ? m.upi : '';
         memberTotals[name] = {
           name,
@@ -414,6 +557,12 @@
           paidItems: [],
           consumedItems: []
         };
+        squadNames.push(name);
+      });
+
+      const squadLowerMap = {};
+      squadNames.forEach(n => {
+        squadLowerMap[n.toLowerCase()] = n;
       });
 
       let totalSpendPaise = 0;
@@ -421,60 +570,75 @@
 
       expenses.forEach((exp, expIdx) => {
         const paise = exp.amountPaise || 0;
+        if (paise <= 0) {
+          throw new Error(`Expense #${expIdx + 1} ("${exp.description || 'Expense'}") has non-positive amount.`);
+        }
         totalSpendPaise += paise;
 
-        // Ensure payer exists in member totals
-        if (!memberTotals[exp.payer]) {
-          memberTotals[exp.payer] = {
-            name: exp.payer,
-            upi: '',
-            paidPaise: 0,
-            consumedPaise: 0,
-            netPaise: 0,
-            paidItems: [],
-            consumedItems: []
-          };
+        // Strict Payer Validation: Payer MUST be a registered squad member
+        const rawPayer = (exp.payer || '').trim();
+        const canonicalPayer = squadLowerMap[rawPayer.toLowerCase()];
+        if (!canonicalPayer || !memberTotals[canonicalPayer]) {
+          throw new Error(`Unknown or unregistered payer "${rawPayer || 'Unresolved'}" on expense #${expIdx + 1}. Only registered squad members can pay expenses.`);
         }
 
         // Record Payer payment
-        memberTotals[exp.payer].paidPaise += paise;
-        memberTotals[exp.payer].paidItems.push({
+        memberTotals[canonicalPayer].paidPaise += paise;
+        memberTotals[canonicalPayer].paidItems.push({
           id: exp.id || ('exp_' + expIdx),
           description: exp.description || exp.raw || `Expense #${expIdx + 1}`,
           amountPaise: paise
         });
 
-        // Determine participants
-        const participants = exp.included && exp.included.length > 0
-          ? exp.included
-          : Object.keys(memberTotals);
+        // Determine shares
+        let shares = {};
+        if (exp.allocations && Object.keys(exp.allocations).length > 0) {
+          let sumAlloc = 0;
+          Object.keys(exp.allocations).forEach(rawBeneficiary => {
+            const canonicalBeneficiary = squadLowerMap[rawBeneficiary.toLowerCase()];
+            if (!canonicalBeneficiary || !memberTotals[canonicalBeneficiary]) {
+              throw new Error(`Unknown or unregistered beneficiary "${rawBeneficiary}" in allocations for expense #${expIdx + 1}.`);
+            }
+            const allocPaise = Math.round(exp.allocations[rawBeneficiary]);
+            if (allocPaise < 0) {
+              throw new Error(`Negative allocation for ${rawBeneficiary} in expense #${expIdx + 1}.`);
+            }
+            shares[canonicalBeneficiary] = {
+              sharePaise: allocPaise,
+              hasRemainderPaisa: false
+            };
+            sumAlloc += allocPaise;
+          });
 
-        const shares = this.calculateEqualShares(paise, participants);
+          if (sumAlloc !== paise) {
+            throw new Error(`Allocation Invariant Violation on expense #${expIdx + 1}: Sum of allocations (${sumAlloc} paise) does not equal total amount (${paise} paise).`);
+          }
+        } else {
+          // Equal split among valid registered participants
+          const participants = (exp.included && exp.included.length > 0 ? exp.included : squadNames)
+            .map(rawName => squadLowerMap[(rawName || '').toLowerCase()])
+            .filter(Boolean);
+
+          if (participants.length === 0) {
+            throw new Error(`No registered participants included for expense #${expIdx + 1}.`);
+          }
+
+          shares = this.calculateEqualShares(paise, participants);
+        }
 
         // Record consumption per participant
-        participants.forEach(name => {
-          if (!memberTotals[name]) {
-            memberTotals[name] = {
-              name,
-              upi: '',
-              paidPaise: 0,
-              consumedPaise: 0,
-              netPaise: 0,
-              paidItems: [],
-              consumedItems: []
-            };
-          }
+        Object.keys(shares).forEach(name => {
           const shareInfo = shares[name];
           memberTotals[name].consumedPaise += shareInfo.sharePaise;
           memberTotals[name].consumedItems.push({
             id: exp.id || ('exp_' + expIdx),
             description: exp.description || exp.raw || `Expense #${expIdx + 1}`,
             raw: exp.raw,
-            payer: exp.payer,
+            payer: canonicalPayer,
             sharePaise: shareInfo.sharePaise,
             totalAmountPaise: paise,
-            participantCount: participants.length,
-            hasRemainderPaisa: shareInfo.hasRemainderPaisa
+            participantCount: Object.keys(shares).length,
+            hasRemainderPaisa: shareInfo.hasRemainderPaisa || false
           });
         });
 
@@ -482,9 +646,9 @@
           id: exp.id || ('exp_' + expIdx),
           description: exp.description || exp.raw || `Expense #${expIdx + 1}`,
           raw: exp.raw,
-          payer: exp.payer,
+          payer: canonicalPayer,
           amountPaise: paise,
-          participantCount: participants.length,
+          participantCount: Object.keys(shares).length,
           shares
         });
       });
@@ -510,28 +674,21 @@
         });
       });
 
-      // Invariant 1 & 2: Total expense amounts === Sum of participant allocations === TotalSpend
       if (sumAllocations !== totalSpendPaise) {
         throw new Error(`Financial Invariant Failure: Total allocations (${sumAllocations}) do not equal total spend (${totalSpendPaise}).`);
       }
-
-      // Invariant 3 & 4: Total Paid === Total Consumed === TotalSpend
       if (sumPaid !== totalSpendPaise) {
         throw new Error(`Financial Invariant Failure: Total paid (${sumPaid}) does not equal total spend (${totalSpendPaise}).`);
       }
       if (sumConsumed !== totalSpendPaise) {
         throw new Error(`Financial Invariant Failure: Total consumed (${sumConsumed}) does not equal total spend (${totalSpendPaise}).`);
       }
-
-      // Invariant 5: Each member's net balance equals total paid minus total consumed
       Object.keys(memberTotals).forEach(name => {
         const m = memberTotals[name];
         if (m.netPaise !== (m.paidPaise - m.consumedPaise)) {
           throw new Error(`Financial Invariant Failure: Net balance for ${name} does not match (Paid - Consumed).`);
         }
       });
-
-      // Invariant 6: Sum of all net balances equals exactly zero paise
       const driftPaise = Math.abs(sumNet);
       if (driftPaise !== 0) {
         throw new Error(`Financial Invariant Failure: Net balance sum is non-zero (${sumNet} paise).`);
@@ -949,6 +1106,8 @@
           payer: (e.payer || '').trim(),
           amountRupees: amountPaise / 100,
           amountPaise: amountPaise,
+          splitType: e.splitType || (e.allocations ? 'custom' : 'equal'),
+          allocations: (e.allocations && typeof e.allocations === 'object') ? e.allocations : null,
           included: Array.isArray(e.included) ? e.included : [],
           excluded: Array.isArray(e.excluded) ? e.excluded : []
         };
