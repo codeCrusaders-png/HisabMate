@@ -71,7 +71,7 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 
   <!-- Core Financial & Parsing Engine (Zero-drift, Subset-Partition DP, NLP) -->
-  <script src="./engine.js"></script>
+  <script src="./engine.js?v=2.2.0"></script>
 
   <script>
     tailwind.config = {
@@ -2133,13 +2133,24 @@
         }
 
         try {
-          const upiLib = (typeof UPI !== 'undefined' && UPI) || (typeof Engine !== 'undefined' && Engine.UPI) || (window.HisabMateEngine && window.HisabMateEngine.UPI);
-          const upiUri = upiLib.buildPaymentUri({
-            payeeVpa: payeeUpi,
-            payeeName: payeeName,
-            amountRupees: amountRupees,
-            outingTitle: this.outing.title
-          });
+          const upiLib = (typeof UPI !== 'undefined' && UPI) || 
+                         (typeof Engine !== 'undefined' && Engine.UPI) || 
+                         (window.HisabMateEngine && window.HisabMateEngine.UPI) ||
+                         (window.Engine && window.Engine.UPI);
+
+          let upiUri = '';
+          if (upiLib && typeof upiLib.buildPaymentUri === 'function') {
+            upiUri = upiLib.buildPaymentUri({
+              payeeVpa: payeeUpi,
+              payeeName: payeeName,
+              amountRupees: amountRupees,
+              outingTitle: this.outing.title
+            });
+          } else {
+            const cleanTitle = (this.outing.title || 'Settlement').trim();
+            const note = `HisabMate: ${cleanTitle}`;
+            upiUri = `upi://pay?pa=${encodeURIComponent(payeeUpi.trim())}&pn=${encodeURIComponent(payeeName.trim())}&am=${Number(amountRupees).toFixed(2)}&cu=INR&tn=${encodeURIComponent(note)}`;
+          }
 
           this.currentQrIntent = upiUri;
           const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -2165,13 +2176,24 @@
         }
 
         try {
-          const upiLib = (typeof UPI !== 'undefined' && UPI) || (typeof Engine !== 'undefined' && Engine.UPI) || (window.HisabMateEngine && window.HisabMateEngine.UPI);
-          const upiUri = upiLib.buildPaymentUri({
-            payeeVpa: payeeUpi,
-            payeeName: payeeName,
-            amountRupees: amountRupees,
-            outingTitle: this.outing.title
-          });
+          const upiLib = (typeof UPI !== 'undefined' && UPI) || 
+                         (typeof Engine !== 'undefined' && Engine.UPI) || 
+                         (window.HisabMateEngine && window.HisabMateEngine.UPI) ||
+                         (window.Engine && window.Engine.UPI);
+
+          let upiUri = '';
+          if (upiLib && typeof upiLib.buildPaymentUri === 'function') {
+            upiUri = upiLib.buildPaymentUri({
+              payeeVpa: payeeUpi,
+              payeeName: payeeName,
+              amountRupees: amountRupees,
+              outingTitle: this.outing.title
+            });
+          } else {
+            const cleanTitle = (this.outing.title || 'Settlement').trim();
+            const note = `HisabMate: ${cleanTitle}`;
+            upiUri = `upi://pay?pa=${encodeURIComponent(payeeUpi.trim())}&pn=${encodeURIComponent(payeeName.trim())}&am=${Number(amountRupees).toFixed(2)}&cu=INR&tn=${encodeURIComponent(note)}`;
+          }
 
           if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(upiUri).then(() => {

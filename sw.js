@@ -9,6 +9,7 @@ const PRECACHE_ASSETS = [
   './',
   './index.html',
   './engine.js',
+  './engine.js?v=2.2.0',
   './manifest.json',
   './icon.svg',
   './icon-192.png',
