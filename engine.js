@@ -1776,29 +1776,29 @@
       titleStartX = margin;
     }
 
-    // Row 1: Brand Name + Tagline
+    // Line 1: Brand Name
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(18);
     doc.setTextColor(15, 23, 42); // slate obsidian
-    doc.text('HisabMate', titleStartX, 16);
+    doc.text('HisabMate', titleStartX, 15.8);
 
-    const brandWidth = doc.getTextWidth('HisabMate');
+    // Line 2: Tagline nestled right below brand name
     doc.setFont('helvetica', 'italic');
-    doc.setFontSize(8);
+    doc.setFontSize(7.5);
     doc.setTextColor(100, 116, 139); // slate 500
-    doc.text('•  Hisab sorted, dosti intact', titleStartX + brandWidth + 3, 16);
+    doc.text('“HisabMate hai, toh sab sorted hai.”', titleStartX, 19.8);
 
-    // Row 2: Document Subtitle (Clean: Expense Settlement Statement)
+    // Line 3: Document Subtitle (Clean: Expense Settlement Statement)
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
     doc.setTextColor(51, 65, 85); // slate 700
-    doc.text('Expense Settlement Statement', titleStartX, 20.8);
+    doc.text('Expense Settlement Statement', titleStartX, 24.5);
 
-    // Row 3: Outing Title
+    // Line 4: Outing Name
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8.2);
     doc.setTextColor(180, 83, 9); // amber 700
-    doc.text(`Outing: ${data.title}`, titleStartX, 25);
+    doc.text(`Outing: ${data.title}`, titleStartX, 28.8);
 
     // Right: Statement Metadata Block
     const rightX = pageWidth - margin;
@@ -1809,11 +1809,11 @@
     const outingDateText = `Outing Date: ${data.date}`;
     const genDateText = `Billing Date: ${data.generatedAt}`;
 
-    doc.text(refText, rightX - doc.getTextWidth(refText), 15);
-    doc.text(outingDateText, rightX - doc.getTextWidth(outingDateText), 19.5);
-    doc.text(genDateText, rightX - doc.getTextWidth(genDateText), 24);
+    doc.text(refText, rightX - doc.getTextWidth(refText), 15.8);
+    doc.text(outingDateText, rightX - doc.getTextWidth(outingDateText), 20.2);
+    doc.text(genDateText, rightX - doc.getTextWidth(genDateText), 24.5);
 
-    curY = 28;
+    curY = 32;
 
     // Thin Accent Line
     doc.setDrawColor(226, 232, 240);
