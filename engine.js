@@ -1721,176 +1721,198 @@
     if (!autoTable) {
       if (typeof doc.autoTable === 'function') {
         autoTable = (d, opts) => d.autoTable(opts);
-      } else if (typeof window !== 'undefined' && window.jspdf && typeof window.jspdf.autoTable === 'function') {
-        autoTable = window.jspdf.autoTable;
+      } else if (typeof window !== 'undefined') {
+        if (typeof window.autoTable === 'function') {
+          autoTable = window.autoTable;
+        } else if (window.jspdf && typeof window.jspdf.autoTable === 'function') {
+          autoTable = window.jspdf.autoTable;
+        }
       }
     }
     if (!autoTable) {
       throw new Error('jspdf-autotable plugin is required for PDF bill generation.');
     }
 
+    // Helper: Formats currency safely for standard PDF WinAnsi fonts without glyph scrambling
+    const formatPdfCurrency = (paise) => {
+      const num = (Number(paise) || 0) / 100;
+      const absNum = Math.abs(num);
+      const formatted = absNum.toLocaleString('en-IN', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+      return (num < 0 ? '-Rs. ' : 'Rs. ') + formatted;
+    };
+
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 14;
     const contentWidth = pageWidth - (margin * 2);
 
-    let curY = 16;
+    let curY = 14;
 
-    // --- BRANDING & HEADER ---
+    // --- BRAND HEADER ---
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(22);
-    doc.setTextColor(15, 23, 42); // slate obsidian
+    doc.setFontSize(20);
+    doc.setTextColor(15, 23, 42); // slate 900
     doc.text('HisabMate', margin, curY);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(100, 116, 139); // slate muted
-    doc.text('Official Outing & Expense Settlement Bill', margin, curY + 5);
+    doc.setFontSize(8.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text('Official Group Expense & Settlement Statement', margin, curY + 4.5);
 
     // Header Right
-    doc.setFontSize(8.5);
+    doc.setFontSize(8);
     doc.setTextColor(71, 85, 105);
-    const billDateText = `Bill Generated: ${data.generatedAt}`;
+    const genText = `Statement Date: ${data.generatedAt}`;
     const outingDateText = `Outing Date: ${data.date}`;
-    doc.text(billDateText, pageWidth - margin - doc.getTextWidth(billDateText), curY);
-    doc.text(outingDateText, pageWidth - margin - doc.getTextWidth(outingDateText), curY + 4.5);
+    doc.text(genText, pageWidth - margin - doc.getTextWidth(genText), curY);
+    doc.text(outingDateText, pageWidth - margin - doc.getTextWidth(outingDateText), curY + 4);
 
-    curY += 11;
+    curY += 9;
 
-    // Divider Line
+    // Thin separator rule
     doc.setDrawColor(226, 232, 240);
-    doc.setLineWidth(0.4);
+    doc.setLineWidth(0.3);
     doc.line(margin, curY, pageWidth - margin, curY);
-    curY += 6;
+    curY += 4;
 
-    // --- OUTING SUMMARY HIGHLIGHTS BOX ---
+    // --- OUTING SUMMARY HIGHLIGHTS STRIP ---
     doc.setFillColor(248, 250, 252);
-    doc.roundedRect(margin, curY, contentWidth, 22, 2, 2, 'F');
+    doc.roundedRect(margin, curY, contentWidth, 17, 1.5, 1.5, 'F');
     doc.setDrawColor(226, 232, 240);
-    doc.roundedRect(margin, curY, contentWidth, 22, 2, 2, 'S');
+    doc.roundedRect(margin, curY, contentWidth, 17, 1.5, 1.5, 'S');
 
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.setTextColor(15, 23, 42);
-    doc.text(`Outing: ${data.title}`, margin + 4, curY + 6);
-
-    // 4 metric badges inside box
-    const boxWidth = contentWidth / 4;
-    const metricsY = curY + 12;
-
-    // Stat 1: Total Spend
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(100, 116, 139);
-    doc.text('TOTAL SPEND', margin + 4, metricsY);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.setTextColor(217, 119, 6); // amber
-    doc.text(data.totalSpendRupees, margin + 4, metricsY + 5);
-
-    // Stat 2: Members
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(100, 116, 139);
-    doc.text('MEMBERS', margin + boxWidth + 4, metricsY);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(15, 23, 42);
-    doc.text(`${data.participantCount} registered`, margin + boxWidth + 4, metricsY + 5);
+    doc.text(`Outing: ${data.title}`, margin + 3.5, curY + 4.8);
 
-    // Stat 3: Expenses
+    const colWidth = contentWidth / 4;
+    const statY = curY + 9.5;
+
+    // 1. Total Spend
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
+    doc.setFontSize(7);
     doc.setTextColor(100, 116, 139);
-    doc.text('EXPENSES', margin + (boxWidth * 2) + 4, metricsY);
+    doc.text('TOTAL EXPENDITURE', margin + 3.5, statY);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
+    doc.setFontSize(9.5);
+    doc.setTextColor(180, 83, 9); // amber 700
+    doc.text(formatPdfCurrency(data.totalSpendPaise), margin + 3.5, statY + 4.5);
+
+    // 2. Members
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(100, 116, 139);
+    doc.text('PARTICIPANTS', margin + colWidth + 3.5, statY);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
     doc.setTextColor(15, 23, 42);
-    doc.text(`${data.expenseCount} events`, margin + (boxWidth * 2) + 4, metricsY + 5);
+    doc.text(`${data.participantCount} registered`, margin + colWidth + 3.5, statY + 4.5);
 
-    // Stat 4: Conservation Status
+    // 3. Events
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
+    doc.setFontSize(7);
     doc.setTextColor(100, 116, 139);
-    doc.text('CONSERVATION', margin + (boxWidth * 3) + 4, metricsY);
+    doc.text('EXPENSE EVENTS', margin + (colWidth * 2) + 3.5, statY);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10);
+    doc.setFontSize(9.5);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${data.expenseCount} items`, margin + (colWidth * 2) + 3.5, statY + 4.5);
+
+    // 4. Status
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(100, 116, 139);
+    doc.text('AUDIT BALANCE', margin + (colWidth * 3) + 3.5, statY);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
     if (data.isReconciled) {
-      doc.setTextColor(5, 150, 105); // emerald
-      doc.text('Zero-drift (100%)', margin + (boxWidth * 3) + 4, metricsY + 5);
+      doc.setTextColor(21, 128, 61); // emerald 700
+      doc.text('Zero-drift (100%)', margin + (colWidth * 3) + 3.5, statY + 4.5);
     } else {
-      doc.setTextColor(220, 38, 38); // rose
-      doc.text('Reconciliation Warning', margin + (boxWidth * 3) + 4, metricsY + 5);
+      doc.setTextColor(185, 28, 28); // rose 700
+      doc.text('Action Needed', margin + (colWidth * 3) + 3.5, statY + 4.5);
     }
 
-    curY += 28;
+    curY += 21;
 
-    // Helper to check space before section
     const checkPageBreak = (neededHeight) => {
-      if (curY + neededHeight > pageHeight - 25) {
+      if (curY + neededHeight > pageHeight - 16) {
         doc.addPage();
-        curY = 20;
+        curY = 16;
       }
     };
 
-    // --- SECTION 1: PARTICIPANT FINANCIAL SUMMARY TABLE ---
-    checkPageBreak(30);
+    // --- SECTION 1: PARTICIPANT FINANCIAL SUMMARY ---
+    checkPageBreak(25);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
+    doc.setFontSize(9.5);
     doc.setTextColor(15, 23, 42);
     doc.text('1. Participant Financial Summary', margin, curY);
-    curY += 3;
+    curY += 2.5;
 
-    const participantTableBody = data.participants.map(p => [
-      p.name + (p.upi ? ` (@${p.upi})` : ''),
-      p.paidRupees,
-      p.consumedRupees,
-      p.netRupees,
-      p.status
-    ]);
+    const partRows = data.participants.map(p => {
+      let cleanStatus = 'Settled';
+      if (p.statusType === 'creditor') {
+        cleanStatus = `Receives ${formatPdfCurrency(p.netPaise)}`;
+      } else if (p.statusType === 'debtor') {
+        cleanStatus = `Owes ${formatPdfCurrency(Math.abs(p.netPaise))}`;
+      }
 
-    // Footer row
-    const participantTableFoot = [[
-      'Total',
-      Money.formatINR(data.sumPaidPaise),
-      Money.formatINR(data.sumConsumedPaise),
-      '₹0.00',
-      data.isReconciled ? 'Balanced' : 'Warning'
+      return [
+        p.name + (p.upi ? ` (@${p.upi})` : ''),
+        formatPdfCurrency(p.paidPaise),
+        formatPdfCurrency(p.consumedPaise),
+        (p.netPaise > 0 ? '+' : '') + formatPdfCurrency(p.netPaise),
+        cleanStatus
+      ];
+    });
+
+    const partFoot = [[
+      'Total Balance',
+      formatPdfCurrency(data.sumPaidPaise),
+      formatPdfCurrency(data.sumConsumedPaise),
+      'Rs. 0.00',
+      data.isReconciled ? 'Balanced (Zero-drift)' : 'Warning'
     ]];
 
     autoTable(doc, {
       startY: curY,
-      margin: { left: margin, right: margin, top: 20, bottom: 22 },
-      head: [['Participant', 'Total Paid', 'Share / Consumed', 'Net Balance', 'Status']],
-      body: participantTableBody,
-      foot: participantTableFoot,
+      margin: { left: margin, right: margin, top: 16, bottom: 18 },
+      head: [['Participant', 'Total Paid', 'Share / Consumed', 'Net Balance', 'Settlement Status']],
+      body: partRows,
+      foot: partFoot,
       theme: 'grid',
       headStyles: {
         fillColor: [15, 23, 42],
         textColor: [255, 255, 255],
-        fontSize: 8.5,
+        fontSize: 8,
         fontStyle: 'bold',
-        halign: 'left'
+        cellPadding: { top: 2, bottom: 2, left: 2.5, right: 2.5 }
       },
       footStyles: {
         fillColor: [241, 245, 249],
         textColor: [15, 23, 42],
-        fontSize: 8.5,
-        fontStyle: 'bold'
+        fontSize: 7.5,
+        fontStyle: 'bold',
+        cellPadding: { top: 1.8, bottom: 1.8, left: 2.5, right: 2.5 }
       },
       styles: {
         font: 'helvetica',
-        fontSize: 8,
-        cellPadding: 2.2,
+        fontSize: 7.5,
+        cellPadding: { top: 1.6, bottom: 1.6, left: 2.5, right: 2.5 },
         lineColor: [226, 232, 240],
         lineWidth: 0.2
       },
       columnStyles: {
-        0: { cellWidth: 50 },
-        1: { halign: 'right', cellWidth: 30 },
-        2: { halign: 'right', cellWidth: 32 },
-        3: { halign: 'right', cellWidth: 32 },
-        4: { halign: 'left', cellWidth: 38 }
+        0: { cellWidth: 44, halign: 'left' },
+        1: { cellWidth: 32, halign: 'right' },
+        2: { cellWidth: 32, halign: 'right' },
+        3: { cellWidth: 34, halign: 'right' },
+        4: { cellWidth: 40, halign: 'left' }
       },
       didParseCell: (hookData) => {
         if (hookData.section === 'body') {
@@ -1898,10 +1920,10 @@
           if (rowData) {
             if (hookData.column.index === 3 || hookData.column.index === 4) {
               if (rowData.statusType === 'creditor') {
-                hookData.cell.styles.textColor = [5, 150, 105]; // green
+                hookData.cell.styles.textColor = [21, 128, 61]; // emerald 700
                 hookData.cell.styles.fontStyle = 'bold';
               } else if (rowData.statusType === 'debtor') {
-                hookData.cell.styles.textColor = [220, 38, 38]; // red
+                hookData.cell.styles.textColor = [185, 28, 28]; // rose 700
                 hookData.cell.styles.fontStyle = 'bold';
               }
             }
@@ -1910,169 +1932,175 @@
       }
     });
 
-    curY = doc.lastAutoTable.finalY + 8;
+    curY = doc.lastAutoTable.finalY + 5.5;
 
-    // --- SECTION 2: ITEMIZED EXPENSE LEDGER TABLE ---
-    checkPageBreak(30);
+    // --- SECTION 2: ITEMIZED EXPENSE LEDGER ---
+    checkPageBreak(25);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
+    doc.setFontSize(9.5);
     doc.setTextColor(15, 23, 42);
     doc.text('2. Itemized Expense Ledger', margin, curY);
-    curY += 3;
+    curY += 2.5;
 
-    const expenseTableBody = data.expenseRows.map(e => [
-      e.index,
-      e.description,
-      e.payer,
-      e.amountRupees,
-      e.splitDetails
-    ]);
+    const expRows = data.expenseRows.map(e => {
+      const cleanDetails = e.splitDetails.replace(/₹/g, 'Rs. ');
+      return [
+        e.index,
+        e.description,
+        e.payer,
+        formatPdfCurrency(e.amountPaise),
+        cleanDetails
+      ];
+    });
 
-    const expenseTableFoot = [[
+    const expFoot = [[
       '',
       'Total Recorded Expenditure',
       '',
-      data.totalSpendRupees,
+      formatPdfCurrency(data.totalSpendPaise),
       `${data.expenseRows.length} total events recorded`
     ]];
 
     autoTable(doc, {
       startY: curY,
-      margin: { left: margin, right: margin, top: 20, bottom: 22 },
+      margin: { left: margin, right: margin, top: 16, bottom: 18 },
       head: [['#', 'Description', 'Paid By', 'Amount', 'Split & Allocation Details']],
-      body: expenseTableBody,
-      foot: expenseTableFoot,
+      body: expRows,
+      foot: expFoot,
       theme: 'grid',
       headStyles: {
         fillColor: [15, 23, 42],
         textColor: [255, 255, 255],
-        fontSize: 8.5,
-        fontStyle: 'bold'
+        fontSize: 8,
+        fontStyle: 'bold',
+        cellPadding: { top: 2, bottom: 2, left: 2.5, right: 2.5 }
       },
       footStyles: {
         fillColor: [241, 245, 249],
         textColor: [15, 23, 42],
-        fontSize: 8.5,
-        fontStyle: 'bold'
+        fontSize: 7.5,
+        fontStyle: 'bold',
+        cellPadding: { top: 1.8, bottom: 1.8, left: 2.5, right: 2.5 }
       },
       styles: {
         font: 'helvetica',
-        fontSize: 8,
-        cellPadding: 2.2,
+        fontSize: 7.5,
+        cellPadding: { top: 1.6, bottom: 1.6, left: 2.5, right: 2.5 },
         lineColor: [226, 232, 240],
         lineWidth: 0.2
       },
       columnStyles: {
-        0: { halign: 'center', cellWidth: 10 },
-        1: { cellWidth: 42 },
-        2: { cellWidth: 26 },
-        3: { halign: 'right', cellWidth: 28, fontStyle: 'bold' },
-        4: { cellWidth: 76 }
+        0: { cellWidth: 10, halign: 'center' },
+        1: { cellWidth: 44, halign: 'left' },
+        2: { cellWidth: 26, halign: 'left', fontStyle: 'bold' },
+        3: { cellWidth: 32, halign: 'right', fontStyle: 'bold' },
+        4: { cellWidth: 70, halign: 'left' }
       }
     });
 
-    curY = doc.lastAutoTable.finalY + 8;
+    curY = doc.lastAutoTable.finalY + 5.5;
 
     // --- SECTION 3: SUGGESTED SETTLEMENT TRANSFERS ---
-    checkPageBreak(30);
+    checkPageBreak(25);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
+    doc.setFontSize(9.5);
     doc.setTextColor(15, 23, 42);
     doc.text('3. Suggested Settlement Transfers (Resolution Plan)', margin, curY);
-    curY += 3;
+    curY += 2.5;
 
     if (data.transfers.length === 0) {
       doc.setFont('helvetica', 'italic');
-      doc.setFontSize(8.5);
+      doc.setFontSize(8);
       doc.setTextColor(100, 116, 139);
-      doc.text('All members are fully settled. No payments or transfers are required.', margin, curY + 4);
-      curY += 10;
+      doc.text('All members are fully settled. No payments or transfers are required.', margin, curY + 3);
+      curY += 8;
     } else {
-      const transferBody = data.transfers.map(t => [
+      const txRows = data.transfers.map(t => [
         t.index,
         t.from,
         t.to,
-        t.amountRupees,
-        t.creditorUpi || 'Not set',
+        formatPdfCurrency(t.amountPaise),
+        t.creditorUpi || 'Not configured',
         t.status
       ]);
 
       autoTable(doc, {
         startY: curY,
-        margin: { left: margin, right: margin, top: 20, bottom: 22 },
-        head: [['#', 'From (Debtor)', 'To (Creditor)', 'Amount', 'Creditor UPI', 'Status']],
-        body: transferBody,
+        margin: { left: margin, right: margin, top: 16, bottom: 18 },
+        head: [['#', 'From (Debtor)', 'To (Creditor)', 'Amount to Pay', 'Creditor UPI ID', 'Payment Status']],
+        body: txRows,
         theme: 'grid',
         headStyles: {
           fillColor: [15, 23, 42],
           textColor: [255, 255, 255],
-          fontSize: 8.5,
-          fontStyle: 'bold'
+          fontSize: 8,
+          fontStyle: 'bold',
+          cellPadding: { top: 2, bottom: 2, left: 2.5, right: 2.5 }
         },
         styles: {
           font: 'helvetica',
-          fontSize: 8,
-          cellPadding: 2.2,
+          fontSize: 7.5,
+          cellPadding: { top: 1.6, bottom: 1.6, left: 2.5, right: 2.5 },
           lineColor: [226, 232, 240],
           lineWidth: 0.2
         },
         columnStyles: {
-          0: { halign: 'center', cellWidth: 10 },
-          1: { cellWidth: 36, fontStyle: 'bold' },
-          2: { cellWidth: 36, fontStyle: 'bold' },
-          3: { halign: 'right', cellWidth: 28, textColor: [217, 119, 6], fontStyle: 'bold' },
-          4: { cellWidth: 42, font: 'courier' },
-          5: { cellWidth: 30 }
+          0: { cellWidth: 10, halign: 'center' },
+          1: { cellWidth: 34, halign: 'left', fontStyle: 'bold' },
+          2: { cellWidth: 34, halign: 'left', fontStyle: 'bold' },
+          3: { cellWidth: 32, halign: 'right', textColor: [180, 83, 9], fontStyle: 'bold' },
+          4: { cellWidth: 42, halign: 'left' },
+          5: { cellWidth: 30, halign: 'center' }
         }
       });
 
-      curY = doc.lastAutoTable.finalY + 8;
+      curY = doc.lastAutoTable.finalY + 5.5;
     }
 
-    // --- SECTION 4: RECONCILIATION & AUDIT INVARIANTS ---
-    checkPageBreak(26);
+    // --- SECTION 4: FINANCIAL RECONCILIATION & AUDIT INVARIANTS ---
+    checkPageBreak(20);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
+    doc.setFontSize(9.5);
     doc.setTextColor(15, 23, 42);
     doc.text('4. Financial Reconciliation & Audit Invariants', margin, curY);
-    curY += 4;
+    curY += 2.5;
 
     doc.setFillColor(248, 250, 252);
-    doc.roundedRect(margin, curY, contentWidth, 18, 1.5, 1.5, 'F');
+    doc.roundedRect(margin, curY, contentWidth, 14, 1.2, 1.2, 'F');
     doc.setDrawColor(226, 232, 240);
-    doc.roundedRect(margin, curY, contentWidth, 18, 1.5, 1.5, 'S');
+    doc.roundedRect(margin, curY, contentWidth, 14, 1.2, 1.2, 'S');
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
+    doc.setFontSize(7.2);
     doc.setTextColor(71, 85, 105);
-    const inv1 = `[✓] Invariant 1: Total Paid (${Money.formatINR(data.sumPaidPaise)}) ≡ Total Consumed (${Money.formatINR(data.sumConsumedPaise)}) ≡ Total Spend (${data.totalSpendRupees})`;
-    const inv2 = `[✓] Invariant 2: Conservation of Balances: Sum(Net) ≡ ₹0.00 (Zero paise drift)`;
-    const inv3 = `[✓] Invariant 3: Settlement Completeness: ${data.transfers.length} transfers resolve 100% of outstanding debt`;
+    const inv1 = `[PASS] Invariant 1: Total Paid (${formatPdfCurrency(data.sumPaidPaise)}) = Total Consumed (${formatPdfCurrency(data.sumConsumedPaise)}) = Total Spend (${formatPdfCurrency(data.totalSpendPaise)})`;
+    const inv2 = `[PASS] Invariant 2: Conservation of Balances: Sum(Net Balances) = Rs. 0.00 (Zero paise drift)`;
+    const inv3 = `[PASS] Invariant 3: Settlement Completeness: ${data.transfers.length} transfers resolve 100% of outstanding debts`;
 
-    doc.text(inv1, margin + 4, curY + 4.5);
-    doc.text(inv2, margin + 4, curY + 9);
-    doc.text(inv3, margin + 4, curY + 13.5);
+    doc.text(inv1, margin + 3.5, curY + 3.8);
+    doc.text(inv2, margin + 3.5, curY + 7.6);
+    doc.text(inv3, margin + 3.5, curY + 11.4);
 
-    // --- MULTI-PAGE FOOTER PASS ---
+    // --- TWO-PASS FOOTER ---
     const totalPages = doc.internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       doc.setPage(i);
 
-      // Footer divider line
+      // Divider line
       doc.setDrawColor(226, 232, 240);
       doc.setLineWidth(0.3);
-      doc.line(margin, pageHeight - 12, pageWidth - margin, pageHeight - 12);
+      doc.line(margin, pageHeight - 11, pageWidth - margin, pageHeight - 11);
 
-      // Footer Left: Exact brand signature & product tagline
+      // Left brand signature
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8);
+      doc.setFontSize(7.5);
       doc.setTextColor(100, 116, 139);
-      doc.text('HisabMate • Hisab sorted, dosti intact', margin, pageHeight - 7);
+      doc.text('HisabMate • Hisab sorted, dosti intact', margin, pageHeight - 6.5);
 
-      // Footer Right: Exact required text + page numbers
+      // Right text
       const footerRight = `Made with love for Indian outings.  •  Page ${i} of ${totalPages}`;
       const textWidth = doc.getTextWidth(footerRight);
-      doc.text(footerRight, pageWidth - margin - textWidth, pageHeight - 7);
+      doc.text(footerRight, pageWidth - margin - textWidth, pageHeight - 6.5);
     }
 
     return doc;
