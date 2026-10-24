@@ -359,7 +359,7 @@
       </div>
       
       <div class="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-500 mt-2 px-1 gap-1">
-        <span>💡 Naam daal ke <kbd class="px-1.5 py-0.5 rounded bg-surfaceLight border border-surfaceBorder text-slate-300 font-mono text-[10px]">Enter</kbd> ya <kbd class="px-1.5 py-0.5 rounded bg-surfaceLight border border-surfaceBorder text-slate-300 font-mono text-[10px]">Space</kbd> dabao. Chip pe tap karke kisi ka bhi UPI ID set kar sakte ho.</span>
+        <span>💡 Type a name and press <kbd class="px-1.5 py-0.5 rounded bg-surfaceLight border border-surfaceBorder text-slate-300 font-mono text-[10px]">Enter</kbd> or click <strong>+ Add</strong>. Tap any member chip to configure their UPI ID.</span>
         <span class="text-slate-400">Zero duplicate names • Auto title-cased</span>
       </div>
     </section>
@@ -1928,7 +1928,7 @@
         const netStr = Money.formatINR(Math.abs(net));
         html += '<div class="pt-2 border-t border-surfaceBorder font-mono text-xs">';
         html += `<div class="flex items-center justify-between">
-          <span class="text-slate-400 font-sans font-bold">Net Equation (Faisla):</span>
+          <span class="text-slate-400 font-sans font-bold">Net Balance Equation:</span>
           <span class="font-bold ${net > 0 ? 'text-emeraldMint' : net < 0 ? 'text-rose-400' : 'text-slate-300'}">
             ${net > 0 ? '+' : net < 0 ? '-' : ''}${netStr}
           </span>
@@ -1936,13 +1936,9 @@
         html += `<p class="text-[10px] text-slate-500 font-sans mt-0.5">
           ${info.paidPaise >= info.consumedPaise 
             ? `Paid ${Money.formatINR(info.paidPaise)} - Consumed ${Money.formatINR(info.consumedPaise)} = Surplus (Will receive) ${netStr}` 
-            : `Consumed ${Money.formatINR(info.consumedPaise)} - Paid ${Money.formatINR(info.paidPaise)} = Dena Hai (Debt) ${netStr}`}
+            : `Consumed ${Money.formatINR(info.consumedPaise)} - Paid ${Money.formatINR(info.paidPaise)} = Owes (Debt) ${netStr}`}
         </p>`;
         html += '</div>';
-
-        html += '</div>';
-        return html;
-      }
 
         html += '</div>';
         return html;
@@ -3047,18 +3043,33 @@
 
         // Squad Tag Input
         const squadInput = document.getElementById('squad-input');
+        const addSquadBtn = document.getElementById('btn-add-squad-member');
+
+        const submitSquadMember = () => {
+          if (!squadInput) return;
+          const val = squadInput.value.trim();
+          if (val) {
+            this.addSquadMember(val);
+            squadInput.value = '';
+            squadInput.focus();
+          }
+        };
+
         if (squadInput) {
           squadInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' || e.key === ',') {
+            if (e.key === 'Enter' || e.keyCode === 13 || e.which === 13 || e.key === ',') {
               e.preventDefault();
-              this.addSquadMember(squadInput.value);
-              squadInput.value = '';
+              submitSquadMember();
             } else if (e.key === 'Backspace' && !squadInput.value) {
               if (this.outing.squad.length > 0) {
                 this.removeSquadMember(this.outing.squad.length - 1);
               }
             }
           });
+        }
+
+        if (addSquadBtn) {
+          addSquadBtn.addEventListener('click', () => submitSquadMember());
         }
 
         // Squad Buttons
@@ -3177,9 +3188,18 @@
 
     // Initialize Global Instance
     let app;
-    window.addEventListener('DOMContentLoaded', () => {
-      app = new HisabMate();
-    });
+    function initHisabMate() {
+      if (!window.app) {
+        app = new HisabMate();
+        window.app = app;
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initHisabMate);
+    } else {
+      initHisabMate();
+    }
 
     // PWA Service Worker Registration
     if ('serviceWorker' in navigator) {

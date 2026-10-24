@@ -3,7 +3,7 @@
  * Cache-first offline execution for zero-cloud expense ledger
  */
 
-const CACHE_NAME = 'hisabmate-v2.1.4';
+const CACHE_NAME = 'hisabmate-v2.1.5';
 
 const PRECACHE_ASSETS = [
   './',
