@@ -1,0 +1,21 @@
+{
+  "name": "hisabmate",
+  "version": "2.0.0",
+  "description": "Zero-drift narrative expense ledger & paise-accurate settlement engine",
+  "main": "engine.js",
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  },
+  "keywords": [
+    "expense-splitter",
+    "fintech",
+    "pwa",
+    "settlement-algorithm",
+    "zero-drift",
+    "upi",
+    "india"
+  ],
+  "author": "Code Crusaders",
+  "license": "MIT"
+}
+
