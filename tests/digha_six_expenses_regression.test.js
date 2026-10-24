@@ -417,3 +417,60 @@ test('Test 13: Outing with custom allocations serializes and deserializes accura
   assert.equal(balances.memberTotals['Arkadeep'].consumedPaise, 0);
   assert.equal(balances.memberTotals['Arkadeep'].netPaise, 150000);
 });
+
+// --- TEST 14: COMPLETE USER NARRATIVE WITH EXTENDED NATURAL PHRASING ---
+test('Test 14: User narrative with "Anuj consumed ₹300 worth...", passive snacks, and relative clauses', () => {
+  const narrative = `Six friends — Anuj, Priyasi, Plaban, Arkadeep, Rohan, and Sneha — went on a weekend trip to Digha.
+
+Anuj paid ₹3,600 for the hotel, shared equally among all six friends except Sneha, who stayed with a relative and did not use the hotel.
+
+Priyasi paid ₹1,200 for dinner, shared equally among Anuj, Priyasi, Plaban, and Arkadeep only. Rohan and Sneha did not participate in this dinner.
+
+Plaban paid ₹900 for a cab shared equally by all six friends.
+
+Arkadeep paid ₹1,500 for seafood. Anuj consumed ₹300 worth, Priyasi consumed ₹450 worth, and Plaban consumed ₹750 worth. The other three friends did not eat the seafood.
+
+Rohan paid ₹600 for snacks. Half the snacks cost was consumed by Rohan and Sneha equally, and the remaining half was consumed by Anuj and Priyasi equally.
+
+Sneha paid ₹1,200 for a boat ride shared equally by Anuj, Priyasi, Rohan, and Sneha. Plaban and Arkadeep did not take the boat ride.`;
+
+  const expenses = Parser.parseStory(narrative, SQUAD_NAMES);
+  assert.equal(expenses.length, 6, 'Must parse exactly 6 expenses');
+
+  // Verify Seafood
+  assert.equal(expenses[3].payer, 'Arkadeep');
+  assert.equal(expenses[3].amountPaise, 150000);
+  assert.equal(expenses[3].splitType, 'custom');
+  assert.equal(expenses[3].allocations['Anuj'], 30000);
+  assert.equal(expenses[3].allocations['Priyasi'], 45000);
+  assert.equal(expenses[3].allocations['Plaban'], 75000);
+  assert.deepEqual(expenses[3].excluded.sort(), ['Arkadeep', 'Rohan', 'Sneha'].sort());
+
+  // Verify Snacks
+  assert.equal(expenses[4].payer, 'Rohan');
+  assert.equal(expenses[4].amountPaise, 60000);
+  assert.equal(expenses[4].splitType, 'proportional');
+  assert.equal(expenses[4].allocations['Rohan'], 15000);
+  assert.equal(expenses[4].allocations['Sneha'], 15000);
+  assert.equal(expenses[4].allocations['Anuj'], 15000);
+  assert.equal(expenses[4].allocations['Priyasi'], 15000);
+  assert.deepEqual(expenses[4].excluded.sort(), ['Arkadeep', 'Plaban'].sort());
+
+  // Verify Balances
+  const balances = Ledger.computeBalances(SQUAD_OBJECTS, expenses);
+  assert.equal(balances.totalSpendPaise, 900000);
+  assert.equal(balances.driftPaise, 0);
+
+  const t = balances.memberTotals;
+  assert.equal(t['Anuj'].netPaise, 168000);
+  assert.equal(t['Priyasi'].netPaise, -87000);
+  assert.equal(t['Plaban'].netPaise, -102000);
+  assert.equal(t['Arkadeep'].netPaise, 33000);
+  assert.equal(t['Rohan'].netPaise, -72000);
+  assert.equal(t['Sneha'].netPaise, 60000);
+
+  // Verify Transfers
+  const solver = SettlementSolver.solve(t, SQUAD_OBJECTS);
+  assert.equal(solver.transactions.length, 5);
+  assert.equal(solver.optimal, true);
+});

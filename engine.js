@@ -172,7 +172,7 @@
         // If we have an active transaction block, check if this is an allocation/exclusion/sharing continuation
         if (currentBlock.length > 0) {
           const isContinuation = /^(?:allocated|split|share|sharing|consumed|portion|each|except|excluding|without|minus|leaving|the\s+other|with\s+the\s+other|half|one[- ]third|two[- ]thirds|quarter|one[- ]fourth|1\/2|1\/3|2\/3|1\/4|3\/4|\d+%|[A-Za-z0-9_]+\s*(?:₹|rs\.?|inr)?\s*\d+)/i.test(sentence)
-            || /(?:share\s+half|remaining\s+half|other\s+half|remainder|rest|excluded|not\s+included|consumed\s+by|each\s+among)/i.test(sentence);
+            || /(?:share\s+half|remaining\s+half|other\s+half|remainder|rest|excluded|not\s+included|consumed\s+by|each\s+among|did\s+not\s+(?:have|eat|drink|join|partake|participate|share|take|come|use)|not\s+participate)/i.test(sentence);
 
           if (isContinuation) {
             currentBlock.push(sentence);
@@ -331,9 +331,10 @@
       // 3. Identify Exclusions
       const excluded = [];
       const exclusionRegexes = [
-        /(?:except|without|excluding|minus|leaving\s+out|not\s+including)\s+([^.,;!]+)/gi,
+        /(?:except|without|excluding|minus|leaving\s+out|not\s+including)\s+([^.!?]+)/gi,
         /([A-Za-z0-9_,\s]+?)\s+(?:is|are|were|was)\s+(?:excluded|not\s+included|left\s+out|omitted)/gi,
-        /(?:with\s+)?the\s+other\s+(?:three|two|four|\d+)\s+excluded/gi
+        /([A-Za-z0-9_,\s]+?)\s+did\s+not\s+(?:have|eat|drink|join|partake|participate|share|take|come|use)/gi,
+        /(?:with\s+)?the\s+other\s+(?:three|two|four|\d+)\s+(?:friends\s+)?(?:excluded|did\s+not)/gi
       ];
 
       exclusionRegexes.forEach(rgx => {
@@ -356,7 +357,7 @@
       // --- CHECK 1: Custom individual participant amounts (e.g. Seafood) ---
       // "allocated Anuj ₹300, Priyasi ₹450, and Plaban ₹750" or "Anuj ₹300, Priyasi ₹450, Plaban ₹750"
       if (amountPaise > 0) {
-        const pairRegex = /\b([A-Za-z0-9_]+)\s*(?:[:=]|allocated|takes?|consumes?|portion|got)?\s*(?:₹|rs\.?|inr)?\s*(\b\d{1,3}(?:,\d{2,3})*(?:\.\d{1,2})?\b|\b\d+(?:\.\d{1,2})?\b)\s*(?:₹|rs\.?|inr)?/gi;
+        const pairRegex = /\b([A-Za-z0-9_]+)\s*(?:[:=]|allocated|takes?|took|consumes?|consumed|had|ate|portion|got)?\s*(?:for|of)?\s*(?:₹|rs\.?|inr)?\s*(\b\d{1,3}(?:,\d{2,3})*(?:\.\d{1,2})?\b|\b\d+(?:\.\d{1,2})?\b)\s*(?:₹|rs\.?|inr|worth)?/gi;
         let pm;
         const foundPairs = [];
         while ((pm = pairRegex.exec(workingClause)) !== null) {
@@ -640,6 +641,9 @@
       desc = desc.replace(/\b(?:with\s+)?(?:the\s+)?other\s+(?:three|two|four|\d+)\s+excluded.*$/i, '');
       desc = desc.replace(/\b(?:half|one[- ]third|two[- ]thirds|quarter|one[- ]fourth|1\/2|1\/3|2\/3|1\/4|3\/4|\d+%)\s+.*$/i, '');
 
+      desc = desc.replace(/,\s*who\s+.*$/i, '');
+      desc = desc.replace(/\b[A-Za-z0-9_,\s]+?\s+did\s+not\s+.*$/i, '');
+      desc = desc.replace(/^\s*(?:the|a|an)\s+/i, '');
       desc = desc.replace(/^\s*(?:for|and|then|also|on|ate|had|bought|at|[:\—\–\-])\s+/gi, '')
                  .replace(/\s+(?:for|and|by|shared\s+by|at)\s*$/gi, '')
                  .replace(/^[.,;!\s\—\–\-]+|[.,;!\s\—\–\-]+$/g, '')
