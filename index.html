@@ -389,7 +389,7 @@
       <!-- Narrative Textarea -->
       <div class="relative">
         <textarea id="story-input" rows="4" 
-                  placeholder="e.g. Plaban paid 1200 for lunch for all of us except Priyasi. Priyasi ate veg for 250 paid by Anuj. Arkadeep bought 2 water bottles for 40 for everyone. Rohan paid 250 parking."
+                  placeholder="Type or dictate your outing expenses here (e.g. who paid, how much, and how it was split)..."
                   class="w-full bg-obsidian border border-surfaceBorder focus:border-amberGlow focus:ring-1 focus:ring-amberGlow/50 rounded-xl p-4 text-sm sm:text-base font-normal text-slate-100 placeholder-slate-600 transition outline-none leading-relaxed resize-y min-h-[110px]"></textarea>
       </div>
 
@@ -409,7 +409,7 @@
               <span class="text-[10px] text-slate-400 hidden sm:inline">Voice dictation active</span>
             </div>
             <div id="dictate-live-transcript" class="text-[11px] text-amberGlow/90 font-mono italic truncate max-w-xs sm:max-w-md mt-0.5">
-              Say something like: "Anuj paid 1500 for dinner for all of us"
+              Listening... speak your outing story naturally 🎙️
             </div>
           </div>
         </div>
@@ -655,9 +655,9 @@
         <p class="text-xs text-slate-400 max-w-sm mb-4 leading-relaxed">
           Describe expenses in Step 1, confirm squad members in Step 2, and review in Step 3 for zero-drift settlements!
         </p>
-        <button onclick="app.loadSample(1)" class="px-4 py-2 rounded-xl bg-amberGlow/15 border border-amberGlow/30 text-amberGlow text-xs font-bold hover:bg-amberGlow/25 transition">
-          Load Sample Outing
-        </button>
+        <a href="#section-story" class="px-4 py-2 rounded-xl bg-amberGlow/15 border border-amberGlow/30 text-amberGlow text-xs font-bold hover:bg-amberGlow/25 transition">
+          Tell Your Story Above 📝
+        </a>
       </div>
     </section>
 
@@ -713,6 +713,45 @@
         </button>
         <button id="btn-clear-all-history" class="text-xs text-rose-400 hover:text-rose-300 transition">
           History Clear
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- DICTATION MODE CHOICE MODAL -->
+  <!-- ========================================== -->
+  <div id="dictation-modal-backdrop" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" aria-modal="true" role="dialog">
+    <div class="bg-surface border border-surfaceBorder rounded-2xl max-w-sm w-full p-5 shadow-2xl animate-fadeIn">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center text-lg shadow-inner">
+          🎙️
+        </div>
+        <div>
+          <h3 class="text-base font-bold text-white leading-tight">Voice Dictation</h3>
+          <p class="text-xs text-slate-400 mt-0.5">Your story already contains text.</p>
+        </div>
+      </div>
+      <p class="text-xs text-slate-300 mb-4 leading-relaxed">
+        Choose whether to start a fresh dictation or continue appending to your existing story:
+      </p>
+      <div class="space-y-2">
+        <button id="btn-dictate-fresh" type="button" class="w-full py-2.5 px-4 rounded-xl bg-surfaceLight border border-surfaceBorder hover:border-amberGlow hover:bg-surfaceHover text-slate-100 text-xs font-bold transition flex items-center justify-between group">
+          <span class="flex items-center gap-2">
+            <span>✨</span>
+            <span>Start Fresh</span>
+          </span>
+          <span class="text-[10px] text-slate-400 group-hover:text-amberGlow">Replace story</span>
+        </button>
+        <button id="btn-dictate-append" type="button" class="w-full py-2.5 px-4 rounded-xl bg-surfaceLight border border-surfaceBorder hover:border-sky-500 hover:bg-surfaceHover text-slate-100 text-xs font-bold transition flex items-center justify-between group">
+          <span class="flex items-center gap-2">
+            <span>➕</span>
+            <span>Continue Dictating</span>
+          </span>
+          <span class="text-[10px] text-slate-400 group-hover:text-sky-400">Append to story</span>
+        </button>
+        <button id="btn-dictate-cancel" type="button" class="w-full py-2 text-slate-400 hover:text-white text-xs font-semibold transition">
+          Cancel
         </button>
       </div>
     </div>
@@ -829,7 +868,7 @@
         <label for="upi-modal-input" class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
           UPI ID / VPA
         </label>
-        <input type="text" id="upi-modal-input" placeholder="e.g. plaban@oksbi ya 9876543210@paytm" 
+        <input type="text" id="upi-modal-input" placeholder="e.g. name@upi or 9876543210@paytm" 
                class="w-full bg-obsidian border border-surfaceBorder focus:border-amberGlow focus:ring-1 focus:ring-amberGlow/50 rounded-xl px-3.5 py-2.5 text-sm text-slate-100 placeholder-slate-600 outline-none">
       </div>
 
@@ -1072,6 +1111,8 @@
         this.removedMembers = new Set();
         this.storyDetectionTimer = null;
         this.storyDetectionSeq = 0;
+        this.dictationSessionId = 0;
+        this.isStartingDictation = false;
 
         // Active Outing State
         this.outing = {
@@ -1143,6 +1184,27 @@
       // ========================================
       // LOCAL STORAGE PERSISTENCE & MIGRATION
       // ========================================
+      createEmptyOuting() {
+        return {
+          version: 2,
+          id: 'out_' + Date.now(),
+          title: '',
+          date: new Date().toISOString().split('T')[0],
+          squad: [],
+          story: '',
+          expenses: [],
+          settlementRecords: {},
+          updatedAt: new Date().toISOString()
+        };
+      }
+
+      isDemoOuting(outing) {
+        if (!outing) return false;
+        const isKarim = (outing.title || '').trim().toLowerCase() === "dinner at karim's";
+        const hasDemoStory = (outing.story || '').includes("Plaban paid 1200 for lunch for all of us except Priyasi");
+        return isKarim && hasDemoStory;
+      }
+
       loadState() {
         try {
           // Attempt loading V2
@@ -1152,7 +1214,7 @@
             const legacy = localStorage.getItem(this.STORAGE_KEY_LEGACY);
             if (legacy) {
               const migrated = Storage.migrate(legacy);
-              if (migrated) {
+              if (migrated && !this.isDemoOuting(migrated)) {
                 this.outing = migrated;
                 this.saveState();
                 return;
@@ -1163,7 +1225,7 @@
           if (saved) {
             const parsed = JSON.parse(saved);
             const validated = Storage.validateOuting(parsed);
-            if (validated) {
+            if (validated && !this.isDemoOuting(validated)) {
               this.outing = validated;
               return;
             }
@@ -1172,15 +1234,8 @@
           console.warn('Recovered from corrupted active outing state in localStorage:', e);
         }
 
-        // Default initial demonstration experience
-        this.outing.title = "Dinner at Karim's";
-        this.outing.squad = [
-          { name: 'Plaban', upi: 'plaban@oksbi' },
-          { name: 'Priyasi', upi: '' },
-          { name: 'Anuj', upi: 'anuj@oksbi' },
-          { name: 'Arkadeep', upi: '' }
-        ];
-        this.outing.story = "Plaban paid 1200 for lunch for all of us except Priyasi. Priyasi ate veg for 250 paid by Anuj. Arkadeep bought 2 water bottles for 40 for everyone. Later Plaban paid 300 for dessert for Arkadeep and Priyasi.";
+        // Start with a clean, empty workspace for new users
+        this.outing = this.createEmptyOuting();
       }
 
       saveState() {
@@ -2809,17 +2864,7 @@
       startNewOuting() {
         if (confirm('Start a new outing? Current changes will be replaced (save to history first if needed).')) {
           this.removedMembers = new Set();
-          this.outing = {
-            version: 2,
-            id: 'out_' + Date.now(),
-            title: '',
-            date: new Date().toISOString().split('T')[0],
-            squad: [],
-            story: '',
-            expenses: [],
-            settlementRecords: {},
-            updatedAt: new Date().toISOString()
-          };
+          this.outing = this.createEmptyOuting();
           this.candidateExpenses = [];
           this.calculateSettlements(false);
           this.saveState();
@@ -2996,10 +3041,28 @@
       }
 
       toggleDictation() {
+        if (this.isStartingDictation) return;
+
         if (this.isDictating) {
           this.stopDictation(true);
+          return;
+        }
+
+        const input = document.getElementById('story-input');
+        const currentText = (input ? input.value : this.outing.story || '').trim();
+
+        if (!currentText) {
+          // If story input is clean/empty: begin dictating immediately without modal
+          this.startDictation('fresh');
+          return;
+        }
+
+        // When story input already contains text: provide explicit choice modal
+        const modal = document.getElementById('dictation-modal-backdrop');
+        if (modal) {
+          modal.classList.remove('hidden');
         } else {
-          this.startDictation();
+          this.startDictation('append');
         }
       }
 
@@ -3015,24 +3078,37 @@
         }
       }
 
-      startDictation() {
+      startDictation(mode = 'fresh') {
         const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRec) {
-          this.showToast('Voice dictation is supported in Google Chrome, Microsoft Edge, and Safari. Please open in a supported browser.', 'error');
+          this.showToast('Voice dictation is supported in Google Chrome, Microsoft Edge, and Safari. You can still type your story manually!', 'info');
+          this.updateDictationUI('unsupported');
           return;
         }
 
         if (window.location.protocol === 'file:') {
-          this.showToast('Note: Browsers block microphone on file:// URLs. Please test on the live GitHub Pages link.', 'info');
+          this.showToast('Note: Browsers restrict microphone access on file:// URLs. Please test on http://localhost or live URL.', 'info');
         }
 
         const input = document.getElementById('story-input');
-        this.dictationBaseText = input ? input.value : '';
+        if (mode === 'fresh') {
+          this.dictationBaseText = '';
+          if (input) input.value = '';
+          this.outing.story = '';
+          this.updateStoryCounters();
+          this.saveState();
+        } else {
+          // Mode: append to existing user story
+          const existing = (input ? input.value : this.outing.story || '').trim();
+          this.dictationBaseText = existing;
+        }
+
         this.dictationAccumulated = '';
         this.dictationCurrentFinal = '';
         this.dictationInterim = '';
         this.isDictating = true;
         this.shouldRestartRecognition = true;
+        this.dictationSessionId++;
 
         this.launchSpeechSession();
       }
@@ -3042,6 +3118,9 @@
 
         const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRec) return;
+
+        const currentSessionId = this.dictationSessionId;
+        this.isStartingDictation = true;
 
         // Clean up previous instance cleanly
         if (this.speechRecognition) {
@@ -3063,22 +3142,30 @@
           rec.lang = this.dictationLang || 'en-IN';
 
           rec.onstart = () => {
-            this.isDictating = true;
-            this.updateDictationUI(true, 'Listening... speak clearly into mic 🎙️');
+            this.isStartingDictation = false;
+            if (currentSessionId !== this.dictationSessionId || !this.isDictating) {
+              try { rec.abort(); } catch (e) {}
+              return;
+            }
+            this.updateDictationUI('listening');
           };
 
           rec.onresult = (event) => {
+            if (currentSessionId !== this.dictationSessionId || !this.isDictating) return;
+
             let sessionFinal = '';
             let sessionInterim = '';
 
             for (let i = 0; i < event.results.length; ++i) {
               const item = event.results[i];
               if (item && item[0]) {
-                const text = item[0].transcript;
-                if (item.isFinal) {
-                  sessionFinal += (sessionFinal ? ' ' : '') + text.trim();
-                } else {
-                  sessionInterim += (sessionInterim ? ' ' : '') + text.trim();
+                const text = item[0].transcript.trim();
+                if (text) {
+                  if (item.isFinal) {
+                    sessionFinal += (sessionFinal ? ' ' : '') + text;
+                  } else {
+                    sessionInterim += (sessionInterim ? ' ' : '') + text;
+                  }
                 }
               }
             }
@@ -3093,13 +3180,17 @@
               const preview = (sessionInterim || sessionFinal || this.dictationAccumulated).trim();
               liveEl.textContent = preview ? `"${preview}"` : 'Listening... speak clearly into mic 🎙️';
             }
+
+            // Schedule debounced squad participant detection
+            this.scheduleSquadDetection(600);
           };
 
           rec.onerror = (event) => {
+            this.isStartingDictation = false;
+            if (currentSessionId !== this.dictationSessionId) return;
             console.warn('Speech recognition error event:', event.error);
 
             if (event.error === 'no-speech') {
-              // User paused or hasn't started speaking yet - keep listening
               const liveEl = document.getElementById('dictate-live-transcript');
               if (liveEl) liveEl.textContent = 'Listening... (waiting for speech)';
               return;
@@ -3109,69 +3200,68 @@
               return;
             }
 
+            // Fatal errors: Stop immediately and do not loop restart
+            this.shouldRestartRecognition = false;
+            this.isDictating = false;
+            clearTimeout(this.recognitionRestartTimeout);
+
             if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-              this.shouldRestartRecognition = false;
-              this.isDictating = false;
-              this.updateDictationUI(false);
-              this.showToast('Microphone access blocked! Click the lock/site settings icon in your browser address bar and set Microphone to "Allow".', 'error');
+              this.updateDictationUI('permission-denied');
+              this.showToast('Microphone access denied. Please allow microphone access in your browser site settings.', 'error');
               return;
             }
 
             if (event.error === 'network') {
-              this.shouldRestartRecognition = false;
-              this.isDictating = false;
-              this.updateDictationUI(false);
-              this.showToast('Speech service error. If using Brave, disable Brave Shields for this site, or open in Chrome/Edge.', 'error');
+              this.updateDictationUI('failed');
+              this.showToast('Speech service network error. Please check your internet connection.', 'error');
               return;
             }
 
             if (event.error === 'audio-capture') {
-              this.shouldRestartRecognition = false;
-              this.isDictating = false;
-              this.updateDictationUI(false);
-              this.showToast('No microphone detected. Please check your mic connection in Windows/OS sound settings.', 'error');
+              this.updateDictationUI('failed');
+              this.showToast('No microphone detected. Please check your sound settings.', 'error');
               return;
             }
+
+            this.updateDictationUI('failed');
+            this.showToast('Speech recognition stopped: ' + (event.error || 'unknown error'), 'error');
           };
 
           rec.onend = () => {
-            // Commit current session segment to accumulated
-            if (this.dictationCurrentFinal || this.dictationInterim) {
-              const chunk = (this.dictationCurrentFinal + ' ' + this.dictationInterim).trim();
-              if (chunk) {
-                this.dictationAccumulated = (this.dictationAccumulated ? this.dictationAccumulated + ' ' : '') + chunk;
+            this.isStartingDictation = false;
+            if (currentSessionId !== this.dictationSessionId) return;
+
+            // Commit ONLY genuinely finalized results (never interim results) to accumulated
+            if (this.dictationCurrentFinal) {
+              const trimmed = this.dictationCurrentFinal.trim();
+              if (trimmed) {
+                this.dictationAccumulated = (this.dictationAccumulated ? this.dictationAccumulated + ' ' : '') + trimmed;
               }
               this.dictationCurrentFinal = '';
-              this.dictationInterim = '';
             }
+            this.dictationInterim = '';
 
             if (this.isDictating && this.shouldRestartRecognition) {
               clearTimeout(this.recognitionRestartTimeout);
               this.recognitionRestartTimeout = setTimeout(() => {
-                if (this.isDictating && this.shouldRestartRecognition) {
+                if (this.isDictating && this.shouldRestartRecognition && currentSessionId === this.dictationSessionId) {
                   this.launchSpeechSession();
                 }
-              }, 250);
+              }, 200);
             } else {
-              this.updateDictationUI(false);
+              this.updateDictationUI('idle');
             }
           };
 
           this.speechRecognition = rec;
           rec.start();
-          this.updateDictationUI(true, 'Mic active... listening 🎙️');
+          this.updateDictationUI('requesting');
         } catch (e) {
+          this.isStartingDictation = false;
           console.warn('SpeechRec start failed:', e);
-          if (this.isDictating && this.shouldRestartRecognition) {
-            clearTimeout(this.recognitionRestartTimeout);
-            this.recognitionRestartTimeout = setTimeout(() => {
-              if (this.isDictating) this.launchSpeechSession();
-            }, 350);
-          } else {
-            this.isDictating = false;
-            this.updateDictationUI(false);
-            this.showToast('Could not start speech recognition: ' + (e.message || e), 'error');
-          }
+          this.isDictating = false;
+          this.updateDictationUI('failed');
+          this.showToast('Could not start microphone: ' + (e.message || e), 'error');
         }
       }
 
@@ -3200,51 +3290,67 @@
       stopDictation(showToastNotice = true) {
         this.shouldRestartRecognition = false;
         this.isDictating = false;
+        this.isStartingDictation = false;
+        this.dictationSessionId++;
         clearTimeout(this.recognitionRestartTimeout);
 
         if (this.speechRecognition) {
           try {
+            this.speechRecognition.onstart = null;
+            this.speechRecognition.onresult = null;
+            this.speechRecognition.onerror = null;
+            this.speechRecognition.onend = null;
             this.speechRecognition.stop();
           } catch (e) {}
+          this.speechRecognition = null;
         }
 
+        // Final sync of any remaining speech
         this.syncDictationToTextarea();
 
-        const capturedWords = (this.dictationAccumulated + ' ' + (this.dictationCurrentFinal || '') + ' ' + (this.dictationInterim || '')).trim();
+        const newlySpoken = (this.dictationAccumulated + ' ' + (this.dictationCurrentFinal || '') + ' ' + (this.dictationInterim || '')).trim();
+
         this.dictationAccumulated = '';
         this.dictationCurrentFinal = '';
         this.dictationInterim = '';
         this.dictationBaseText = '';
 
         this.saveState();
-        this.updateDictationUI(false);
-        this.syncSquadFromStory(true);
+        this.updateDictationUI('idle');
 
-        if (showToastNotice && capturedWords) {
-          this.showToast('Voice dictation captured & saved! ✓', 'success');
+        // Immediately evaluate final transcript for squad detection
+        this.flushSquadDetection(true);
+
+        if (showToastNotice && newlySpoken) {
+          this.showToast('Voice dictation saved! ✓', 'success');
         }
       }
 
-      updateDictationUI(isListening, statusText = '') {
+      updateDictationUI(state, customStatus = '') {
         const btn = document.getElementById('btn-dictate');
         const text = document.getElementById('dictate-text');
         const indicator = document.getElementById('dictate-indicator');
         const bar = document.getElementById('listening-bar');
         const liveEl = document.getElementById('dictate-live-transcript');
 
-        if (isListening) {
+        if (state === 'listening' || state === 'requesting') {
           if (btn) {
             btn.classList.add('border-rose-500', 'bg-rose-500/10', 'text-rose-300');
             btn.classList.remove('bg-surfaceLight', 'border-surfaceBorder', 'text-slate-200');
           }
-          if (text) text.textContent = 'Stop';
+          if (text) text.textContent = 'Stop ⏹️';
           if (indicator) indicator.classList.remove('hidden');
           if (bar) bar.classList.remove('hidden');
-          if (liveEl && statusText) liveEl.textContent = statusText;
+          if (liveEl) {
+            liveEl.textContent = customStatus || (state === 'requesting' ? 'Requesting microphone permission...' : 'Listening... speak clearly into mic 🎙️');
+          }
         } else {
           if (btn) {
             btn.classList.remove('border-rose-500', 'bg-rose-500/10', 'text-rose-300');
             btn.classList.add('bg-surfaceLight', 'border-surfaceBorder', 'text-slate-200');
+            if (state === 'unsupported') {
+              btn.classList.add('opacity-50');
+            }
           }
           if (text) text.textContent = 'Dictate';
           if (indicator) indicator.classList.add('hidden');
@@ -3378,7 +3484,7 @@
           });
         }
 
-        // Dictation
+        // Dictation (Web Speech API)
         const dictateBtn = document.getElementById('btn-dictate');
         if (dictateBtn) dictateBtn.addEventListener('click', () => this.toggleDictation());
 
@@ -3387,6 +3493,42 @@
 
         const toggleLangBtn = document.getElementById('btn-toggle-speech-lang');
         if (toggleLangBtn) toggleLangBtn.addEventListener('click', () => this.toggleSpeechLang());
+
+        // Dictation Choice Modal Buttons (Start Fresh vs Continue/Append)
+        const dictateFreshBtn = document.getElementById('btn-dictate-fresh');
+        if (dictateFreshBtn) {
+          dictateFreshBtn.addEventListener('click', () => {
+            const modal = document.getElementById('dictation-modal-backdrop');
+            if (modal) modal.classList.add('hidden');
+            this.startDictation('fresh');
+          });
+        }
+
+        const dictateAppendBtn = document.getElementById('btn-dictate-append');
+        if (dictateAppendBtn) {
+          dictateAppendBtn.addEventListener('click', () => {
+            const modal = document.getElementById('dictation-modal-backdrop');
+            if (modal) modal.classList.add('hidden');
+            this.startDictation('append');
+          });
+        }
+
+        const dictateCancelBtn = document.getElementById('btn-dictate-cancel');
+        if (dictateCancelBtn) {
+          dictateCancelBtn.addEventListener('click', () => {
+            const modal = document.getElementById('dictation-modal-backdrop');
+            if (modal) modal.classList.add('hidden');
+          });
+        }
+
+        const dictationModal = document.getElementById('dictation-modal-backdrop');
+        if (dictationModal) {
+          dictationModal.addEventListener('click', (e) => {
+            if (e.target === dictationModal) {
+              dictationModal.classList.add('hidden');
+            }
+          });
+        }
 
         // Sample Stories Dropdown
         const sampleBtn = document.getElementById('btn-sample-stories');
