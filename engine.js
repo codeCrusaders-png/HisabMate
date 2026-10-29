@@ -690,8 +690,141 @@
       return expenses;
     },
 
+    DISCOVER_STOPWORDS: new Set([
+      'a', 'an', 'the', 'all', 'us', 'we', 'them', 'they', 'everyone', 'everybody', 'anyone', 'someone',
+      'friends', 'friend', 'squad', 'members', 'member', 'group', 'people', 'person',
+      'persons', 'guys', 'relative', 'relatives', 'family', 'flatmates', 'roommates',
+      'colleagues', 'each', 'both', 'other', 'others', 'and', 'or', 'who', 'which', 'that', 'this',
+      'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
+      'half', 'quarter', 'third', 'share', 'portion', 'split', 'cost', 'bill', 'amount',
+      'worth', 'total', 'sum', 'money', 'cash', 'upi', 'rupees', 'paise', 'rs', 'inr',
+      'remaining', 'rest', 'some', 'few', 'registered',
+      'digha', 'goa', 'manali', 'mumbai', 'delhi', 'bangalore', 'bengaluru', 'pune',
+      'kolkata', 'pondicherry', 'shimla', 'rishikesh', 'jaipur', 'udaipur', 'kerala',
+      'karim', "karim's", 'karims',
+      'broadband', 'wifi', 'cans', 'fastag', 'auto', 'bus', 'train', 'metro', 'airtel',
+      'veg', 'nonveg', 'beer', 'beers', 'wine', 'alcohol', 'tea', 'juice', 'pizza',
+      'burger', 'biryani', 'roti', 'naan', 'rice', 'dal', 'curry', 'icecream',
+      'saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday',
+      'weekend', 'morning', 'evening', 'night', 'afternoon', 'yesterday', 'today',
+      'tomorrow', 'month', 'year', 'day', 'days', 'january', 'february', 'march',
+      'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november',
+      'december',
+      'of', 'for', 'in', 'on', 'at', 'to', 'from', 'with', 'without', 'by', 'as', 'into',
+      'about', 'over', 'after', 'before', 'during', 'under', 'between', 'among', 'per',
+      'except', 'excluding', 'only', 'use', 'calculate', 'every', 'ensure', 'assume',
+      'note', 'please', 'instructions', 'instruction', 'summary', 'expenses', 'notes',
+      'participate', 'independently', 'allocated', 'equally', 'not', 'no', 'is', 'are',
+      'was', 'were', 'did', 'does', 'do', 'had', 'have', 'has', 'went', 'visited',
+      'travelled', 'traveled', 'stayed', 'used', 'ate', 'took', 'joined', 'came',
+      'paid', 'spent', 'bought', 'ordered', 'handled', 'covered', 'given', 'gave',
+      'transferred', 'chipped', 'added', 'being'
+    ]),
+
+    /**
+     * Extracts distinct participant names mentioned in a natural language story.
+     * Deduplicates, title-cases, and filters out locations, items, numbers, and stopwords.
+     * @param {string} storyText The narrative string
+     * @param {string[]} squadNames Optional existing known squad names
+     * @returns {string[]} List of distinct detected participant names
+     */
     discoverNames(storyText, squadNames = []) {
-      return []; // Intentionally return empty: participant creation must be separate from expense parsing
+      if (!storyText || typeof storyText !== 'string') return [];
+      const text = storyText.replace(/\r\n/g, '\n');
+      const foundNames = [];
+      const seenLower = new Set();
+
+      const addCandidate = (raw) => {
+        if (!raw) return;
+        const clean = raw.trim().replace(/^[^a-zA-Z]+|[^a-zA-Z]+$/g, '');
+        if (clean.length < 2 || clean.length > 20) return;
+        if (!/^[A-Za-z]+$/.test(clean)) return;
+        const lower = clean.toLowerCase();
+        if (this.DISCOVER_STOPWORDS.has(lower) || this.NON_PARTICIPANT_TERMS.has(lower)) return;
+        if (seenLower.has(lower)) return;
+        seenLower.add(lower);
+        const properName = clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase();
+        foundNames.push(properName);
+      };
+
+      const processNameList = (str) => {
+        if (!str) return;
+        const parts = str.split(/(?:,|\band\b|&|\/|\+)/gi);
+        parts.forEach(p => {
+          const tokens = p.trim().split(/\s+/);
+          tokens.forEach(t => addCandidate(t));
+        });
+      };
+
+      // 1. Group introductory patterns: e.g. "Six friends — Anuj, Priyasi, Plaban... — went on..."
+      const introRegex = /(?:(?:six|five|four|three|two|\d+)\s+friends|friends|squad|group|members)\s*[:—–-]\s*([^.—–\n]+)/gi;
+      let match;
+      while ((match = introRegex.exec(text)) !== null) {
+        processNameList(match[1]);
+      }
+
+      // 2. Payers: "<Name> paid/spent/bought/covered..." or "<Name> and <Name> paid..."
+      const payerVerbRegex = /\b([A-Za-z]+(?:\s+and\s+[A-Za-z]+)?)\s+(?:paid|spent|bought|covered|gave|chipped\s*in|ordered|transferred|handled)\b/gi;
+      while ((match = payerVerbRegex.exec(text)) !== null) {
+        processNameList(match[1]);
+      }
+
+      // 2b. Sharers: "<Name> and <Name> shared/split..."
+      const sharerSubjectRegex = /([^.\n;,]+?)\s+(?:shared|split)\b/gi;
+      while ((match = sharerSubjectRegex.exec(text)) !== null) {
+        processNameList(match[1]);
+      }
+
+      // 3. "paid/bought/spent/covered by <Name>"
+      const paidByRegex = /(?:paid|bought|spent|covered|handled|ordered|given)\s+by\s+([A-Za-z]+)\b/gi;
+      while ((match = paidByRegex.exec(text)) !== null) {
+        addCandidate(match[1]);
+      }
+
+      // 4. List items: "<Name> — ₹X" or "<Name> : ₹X"
+      const listPayerRegex = /^\s*([A-Za-z]+)\s*[:—–-]\s*(?:₹|rs\.?|inr)?\s*\d+/gim;
+      while ((match = listPayerRegex.exec(text)) !== null) {
+        addCandidate(match[1]);
+      }
+
+      // 5. Sharing / Split clauses: "shared by ...", "shared among ...", "shared between ..."
+      const sharedRegex = /(?:shared|split|consumed)\s+(?:equally\s+)?(?:by|among|between)\s+([^.\n;]+?)(?:\s+equally|\s+only|\s+except|\s+excluding|\s+without|\.|$|;)/gi;
+      while ((match = sharedRegex.exec(text)) !== null) {
+        processNameList(match[1]);
+      }
+
+      // 6. Exclusions: "except ...", "excluding ...", "without ..."
+      const exceptRegex = /(?:except|excluding|without)\s+([^.\n;,]+?)(?:,|\.|$|;|\s+who)/gi;
+      while ((match = exceptRegex.exec(text)) !== null) {
+        processNameList(match[1]);
+      }
+
+      // 7. Did not participate / eat: "<Name> did not participate / eat / drink / take"
+      const didNotRegex = /([A-Za-z]+)(?:\s+and\s+([A-Za-z]+))?\s+did\s+not\s+(?:participate|eat|drink|join|take|come|use)/gi;
+      while ((match = didNotRegex.exec(text)) !== null) {
+        if (match[1]) addCandidate(match[1]);
+        if (match[2]) addCandidate(match[2]);
+      }
+
+      // 8. Explicit consumption: "<Name> consumed ₹X", "<Name> ate veg for 250"
+      const consumedRegex = /\b([A-Za-z]+)\s+(?:consumed|ate|took|got)\b/gi;
+      while ((match = consumedRegex.exec(text)) !== null) {
+        addCandidate(match[1]);
+      }
+
+      // 9. Allocated: "Allocated <Name> ₹X, <Name> ₹Y"
+      const allocRegex = /(?:allocated|portion|share)\s+([A-Za-z]+)\s*(?:₹|rs\.?|inr)?\s*\d+/gi;
+      while ((match = allocRegex.exec(text)) !== null) {
+        addCandidate(match[1]);
+      }
+
+      // 10. For: "for <Name1> and <Name2>" (e.g. "dessert for Arkadeep and Priyasi")
+      const forRegex = /(?:dessert|lunch|dinner|food|snacks|drinks|bottles|tickets?)\s+for\s+([^.\n;,]+?)(?:\.|$|;)/gi;
+      while ((match = forRegex.exec(text)) !== null) {
+        processNameList(match[1]);
+      }
+
+      return foundNames;
     }
   };
 

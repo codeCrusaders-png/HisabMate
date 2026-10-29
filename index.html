@@ -265,18 +265,18 @@
     <!-- ========================================== -->
     <nav aria-label="Workflow Navigation" class="mb-6 bg-surface border border-surfaceBorder rounded-2xl p-2.5 shadow-lg">
       <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-left">
-        <a href="#section-squad" class="flex items-center gap-2.5 p-2 rounded-xl bg-surfaceLight/80 border border-surfaceBorder hover:border-amber-500/40 transition">
-          <span class="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 text-xs font-bold flex items-center justify-center font-mono">1</span>
+        <a href="#section-story" class="flex items-center gap-2.5 p-2 rounded-xl bg-surfaceLight/80 border border-surfaceBorder hover:border-sky-500/40 transition">
+          <span class="w-6 h-6 rounded-full bg-sky-500/20 text-sky-400 text-xs font-bold flex items-center justify-center font-mono">1</span>
           <div class="min-w-0">
-            <div class="text-xs font-bold text-white truncate">1. The Squad</div>
-            <div class="text-[10px] text-slate-400 truncate">Add participants</div>
+            <div class="text-xs font-bold text-white truncate">1. Expense Story</div>
+            <div class="text-[10px] text-slate-400 truncate">Natural language / voice</div>
           </div>
         </a>
-        <a href="#section-story" class="flex items-center gap-2.5 p-2 rounded-xl bg-surfaceLight/80 border border-surfaceBorder hover:border-sky-500/40 transition">
-          <span class="w-6 h-6 rounded-full bg-sky-500/20 text-sky-400 text-xs font-bold flex items-center justify-center font-mono">2</span>
+        <a href="#section-squad" class="flex items-center gap-2.5 p-2 rounded-xl bg-surfaceLight/80 border border-surfaceBorder hover:border-amber-500/40 transition">
+          <span class="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 text-xs font-bold flex items-center justify-center font-mono">2</span>
           <div class="min-w-0">
-            <div class="text-xs font-bold text-white truncate">2. Expense Story</div>
-            <div class="text-[10px] text-slate-400 truncate">Natural language / voice</div>
+            <div class="text-xs font-bold text-white truncate">2. The Squad</div>
+            <div class="text-[10px] text-slate-400 truncate">Add / detected members</div>
           </div>
         </a>
         <a href="#parsed-expenses-section" class="flex items-center gap-2.5 p-2 rounded-xl bg-surfaceLight/80 border border-surfaceBorder hover:border-emerald-500/40 transition">
@@ -329,53 +329,14 @@
     </div>
 
     <!-- ========================================== -->
-    <!-- SECTION 1: THE SQUAD (Interactive Tag Chips) -->
-    <!-- ========================================== -->
-    <section id="section-squad" aria-labelledby="squad-heading" class="bg-surface border border-surfaceBorder rounded-2xl p-5 sm:p-6 mb-6 shadow-xl">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-        <div class="flex items-center gap-2">
-          <h2 id="squad-heading" class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-            <span>👥</span>
-            <span>Step 1: The Squad</span>
-            <span id="squad-count-badge" class="text-xs font-mono px-2 py-0.5 rounded-full bg-surfaceLight border border-surfaceBorder text-amberGlow">0</span>
-          </h2>
-          <span class="text-xs text-slate-400 hidden sm:inline">• Add participants</span>
-        </div>
-
-        <div class="flex items-center gap-2">
-          <button id="btn-load-sample-squad" class="text-xs text-amberGlow hover:text-amber-400 font-medium px-2.5 py-1 rounded-md bg-amberGlow/10 border border-amberGlow/20 transition hover:bg-amberGlow/20">
-            ⚡ Load Sample Squad
-          </button>
-          <button id="btn-clear-squad" class="text-xs text-slate-500 hover:text-rose-400 transition px-2 py-1">
-            Clear
-          </button>
-        </div>
-      </div>
-
-      <!-- Tactile Chip Container with Inline Input -->
-      <div id="squad-chip-container" 
-           class="min-h-[56px] w-full bg-obsidian border border-surfaceBorder focus-within:border-amberGlow focus-within:ring-1 focus-within:ring-amberGlow/40 rounded-xl p-2.5 flex flex-wrap items-center gap-2 transition cursor-text">
-        <input type="text" id="squad-input" 
-               placeholder="+ Add participant name and press Enter..." 
-               class="bg-transparent border-none outline-none text-sm text-slate-100 placeholder-slate-500 px-2 py-1 flex-1 min-w-[200px]" 
-               autocomplete="off" />
-      </div>
-      
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-500 mt-2 px-1 gap-1">
-        <span>💡 Type a name and press <kbd class="px-1.5 py-0.5 rounded bg-surfaceLight border border-surfaceBorder text-slate-300 font-mono text-[10px]">Enter</kbd> or click <strong>+ Add</strong>. Tap any member chip to configure their UPI ID.</span>
-        <span class="text-slate-400">Zero duplicate names • Auto title-cased</span>
-      </div>
-    </section>
-
-    <!-- ========================================== -->
-    <!-- SECTION 2: STORY INPUT & MANUAL ENTRY -->
+    <!-- SECTION 1: TELL YOUR STORY & MANUAL ENTRY -->
     <!-- ========================================== -->
     <section id="section-story" aria-labelledby="story-heading" class="bg-surface border border-surfaceBorder rounded-2xl p-5 sm:p-6 mb-6 shadow-xl relative">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
         <div>
           <h2 id="story-heading" class="text-base sm:text-lg font-extrabold text-white flex items-center gap-2">
             <span>📝</span>
-            <span>Step 2: Tell Us The Story</span>
+            <span>Step 1: Tell Us The Story</span>
           </h2>
           <p class="text-xs text-slate-400 mt-0.5">
             Type or speak naturally about who paid and how expenses were shared. Or tap "Add Expense Manually".
@@ -487,6 +448,45 @@
             <span class="font-bold tracking-tight">Review &amp; Parse Story ➔</span>
           </button>
         </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- SECTION 2: ADD SQUAD MEMBERS (Detected & Manual) -->
+    <!-- ========================================== -->
+    <section id="section-squad" aria-labelledby="squad-heading" class="bg-surface border border-surfaceBorder rounded-2xl p-5 sm:p-6 mb-6 shadow-xl">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+        <div class="flex items-center gap-2">
+          <h2 id="squad-heading" class="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+            <span>👥</span>
+            <span>Step 2: Add Squad Members</span>
+            <span id="squad-count-badge" class="text-xs font-mono px-2 py-0.5 rounded-full bg-surfaceLight border border-surfaceBorder text-amberGlow">0</span>
+          </h2>
+          <span class="text-xs text-slate-400 hidden sm:inline">• Auto-detected from story & manual add</span>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button id="btn-load-sample-squad" class="text-xs text-amberGlow hover:text-amber-400 font-medium px-2.5 py-1 rounded-md bg-amberGlow/10 border border-amberGlow/20 transition hover:bg-amberGlow/20">
+            ⚡ Load Sample Squad
+          </button>
+          <button id="btn-clear-squad" class="text-xs text-slate-500 hover:text-rose-400 transition px-2 py-1">
+            Clear
+          </button>
+        </div>
+      </div>
+
+      <!-- Tactile Chip Container with Inline Input -->
+      <div id="squad-chip-container" 
+           class="min-h-[56px] w-full bg-obsidian border border-surfaceBorder focus-within:border-amberGlow focus-within:ring-1 focus-within:ring-amberGlow/40 rounded-xl p-2.5 flex flex-wrap items-center gap-2 transition cursor-text">
+        <input type="text" id="squad-input" 
+               placeholder="+ Add participant name and press Enter..." 
+               class="bg-transparent border-none outline-none text-sm text-slate-100 placeholder-slate-500 px-2 py-1 flex-1 min-w-[200px]" 
+               autocomplete="off" />
+      </div>
+      
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-500 mt-2 px-1 gap-1">
+        <span>💡 Names are auto-detected from your story above. You can also manually add or remove members, and tap any chip to configure UPI.</span>
+        <span class="text-slate-400">Zero duplicate names • Auto title-cased</span>
       </div>
     </section>
 
@@ -653,7 +653,7 @@
         </div>
         <h3 class="text-base font-bold text-white mb-1">No Active Settlement Yet</h3>
         <p class="text-xs text-slate-400 max-w-sm mb-4 leading-relaxed">
-          Add squad members in Step 1, describe expenses in Step 2, and review in Step 3 for zero-drift settlements!
+          Describe expenses in Step 1, confirm squad members in Step 2, and review in Step 3 for zero-drift settlements!
         </p>
         <button onclick="app.loadSample(1)" class="px-4 py-2 rounded-xl bg-amberGlow/15 border border-amberGlow/30 text-amberGlow text-xs font-bold hover:bg-amberGlow/25 transition">
           Load Sample Outing
@@ -1069,6 +1069,7 @@
         this.STORAGE_KEY_ACTIVE = 'HISABMATE_ACTIVE_OUTING_V2';
         this.STORAGE_KEY_HISTORY = 'HISABMATE_OUTINGS_HISTORY_V2';
         this.STORAGE_KEY_LEGACY = 'HISABMATE_ACTIVE_OUTING_V1';
+        this.removedMembers = new Set();
 
         // Active Outing State
         this.outing = {
@@ -1119,6 +1120,11 @@
         this.setupEventListeners();
         this.setupSpeechRecognition();
         
+        // Auto-detect squad members from story if squad is empty
+        if (this.outing.story && this.outing.squad.length === 0) {
+          this.syncSquadFromStory(false);
+        }
+
         // Initial parse of story if exists
         if (this.outing.story && this.outing.expenses.length === 0) {
           const squadNames = this.outing.squad.map(s => s.name);
@@ -1220,6 +1226,10 @@
           return;
         }
 
+        if (this.removedMembers) {
+          this.removedMembers.delete(name.toLowerCase());
+        }
+
         this.outing.squad.push({ name, upi: '' });
         this.saveState();
         this.renderSquadChips();
@@ -1247,6 +1257,9 @@
           }
 
           const removed = this.outing.squad.splice(index, 1)[0];
+          if (this.removedMembers) {
+            this.removedMembers.add(removed.name.toLowerCase());
+          }
           this.saveState();
           this.renderSquadChips();
           this.showToast(`Removed ${removed.name} from squad`, 'info');
@@ -1268,6 +1281,9 @@
 
       clearSquad() {
         if (confirm('Remove all members from the squad?')) {
+          if (this.removedMembers) {
+            this.outing.squad.forEach(m => this.removedMembers.add(m.name.toLowerCase()));
+          }
           this.outing.squad = [];
           this.saveState();
           this.renderSquadChips();
@@ -1278,8 +1294,39 @@
       // ========================================
       // NLP PARSER & REVIEW-BEFORE-COMMIT
       // ========================================
+      syncSquadFromStory(notify = false) {
+        const story = (this.outing && this.outing.story) ? this.outing.story : '';
+        if (!story.trim()) return;
+        if (!this.removedMembers) this.removedMembers = new Set();
+        const currentSquadNames = (this.outing.squad || []).map(s => s.name);
+        const detected = Parser.discoverNames(story, currentSquadNames);
+        let addedCount = 0;
+        detected.forEach(name => {
+          const lower = name.toLowerCase();
+          if (this.removedMembers.has(lower)) return;
+          const exists = this.outing.squad.some(m => m.name.toLowerCase() === lower);
+          if (!exists) {
+            this.outing.squad.push({ name, upi: '' });
+            addedCount++;
+          }
+        });
+        if (addedCount > 0) {
+          this.saveState();
+          this.renderSquadChips();
+          if (notify) {
+            this.showToast(`Auto-detected ${addedCount} squad member${addedCount > 1 ? 's' : ''} from story! 👥`, 'info');
+          }
+        }
+      }
+
       triggerReviewAndParse(scroll = true) {
         const story = this.outing.story || '';
+
+        // Proactively detect squad members from narrative if squad is empty
+        if (this.outing.squad.length === 0 && story.trim()) {
+          this.syncSquadFromStory(false);
+        }
+
         const squadNames = this.outing.squad.map(s => s.name);
 
         if (!story.trim() && this.outing.expenses.length === 0) {
@@ -1288,7 +1335,7 @@
         }
 
         if (squadNames.length === 0) {
-          this.showToast('Please add squad members in Step 1 first! 👥', 'info');
+          this.showToast('Please add squad members in Step 2 or mention participants in the story! 👥', 'info');
           return;
         }
 
@@ -2560,6 +2607,7 @@
       // SAMPLES LOADER
       // ========================================
       loadSample(sampleId) {
+        this.removedMembers = new Set();
         if (sampleId === 1) {
           this.outing.title = "Dinner at Karim's";
           this.outing.date = new Date().toISOString().split('T')[0];
@@ -2710,6 +2758,7 @@
       // ========================================
       startNewOuting() {
         if (confirm('Start a new outing? Current changes will be replaced (save to history first if needed).')) {
+          this.removedMembers = new Set();
           this.outing = {
             version: 2,
             id: 'out_' + Date.now(),
@@ -3119,6 +3168,7 @@
 
         this.saveState();
         this.updateDictationUI(false);
+        this.syncSquadFromStory(true);
 
         if (showToastNotice && capturedWords) {
           this.showToast('Voice dictation captured & saved! ✓', 'success');
@@ -3253,7 +3303,12 @@
           storyInput.addEventListener('input', (e) => {
             this.outing.story = e.target.value;
             this.updateStoryCounters();
+            this.syncSquadFromStory(false);
             this.saveState();
+          });
+
+          storyInput.addEventListener('blur', () => {
+            this.syncSquadFromStory(false);
           });
 
           storyInput.addEventListener('keydown', (e) => {
