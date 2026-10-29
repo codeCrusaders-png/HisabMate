@@ -92,7 +92,7 @@
       'flight', 'hotel', 'food', 'room', 'rooms', 'resort', 'chai', 'coffee', 'swiggy',
       'zomato', 'blinkit', 'zepto', 'groceries', 'water', 'bottles', 'parking', 'toll',
       'tolls', 'movie', 'petrol', 'diesel', 'fuel', 'snacks', 'party', 'outing', 'trip',
-      'seafood', 'boat', 'ride'
+      'seafood', 'boat', 'ride', 'beach', 'hotel', 'resort', 'dhaba', 'mall', 'shop', 'station', 'airport', 'entry', 'fee', 'rent'
     ]),
 
     
@@ -711,14 +711,14 @@
       'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november',
       'december',
       'of', 'for', 'in', 'on', 'at', 'to', 'from', 'with', 'without', 'by', 'as', 'into',
-      'about', 'over', 'after', 'before', 'during', 'under', 'between', 'among', 'per',
+      'about', 'over', 'after', 'before', 'during', 'under', 'between', 'among', 'per', 'near', 'around', 'across', 'beside', 'behind', 'above', 'below', 'off', 'out', 'up', 'down',
       'except', 'excluding', 'only', 'use', 'calculate', 'every', 'ensure', 'assume',
       'note', 'please', 'instructions', 'instruction', 'summary', 'expenses', 'notes',
       'participate', 'independently', 'allocated', 'equally', 'not', 'no', 'is', 'are',
       'was', 'were', 'did', 'does', 'do', 'had', 'have', 'has', 'went', 'visited',
       'travelled', 'traveled', 'stayed', 'used', 'ate', 'took', 'joined', 'came',
       'paid', 'spent', 'bought', 'ordered', 'handled', 'covered', 'given', 'gave',
-      'transferred', 'chipped', 'added', 'being'
+      'transferred', 'chipped', 'added', 'being', 'card', 'cards', 'tip', 'tips', 'gst', 'tax', 'vat', 'discount', 'beach', 'hotel', 'resort', 'cafe', 'restaurant', 'dhaba', 'mall', 'shop', 'station', 'airport', 'petrol', 'fuel', 'toll', 'tolls', 'parking', 'cab', 'cabs', 'taxi', 'uber', 'ola', 'flight', 'tickets', 'ticket', 'movie', 'show', 'entry', 'fees', 'fee', 'rent', 'groceries', 'grocery', 'breakfast', 'brunch', 'lunch', 'dinner', 'snacks', 'dessert', 'water', 'seafood', 'boat', 'ride'
     ]),
 
     /**
@@ -819,8 +819,14 @@
       }
 
       // 10. For: "for <Name1> and <Name2>" (e.g. "dessert for Arkadeep and Priyasi")
-      const forRegex = /(?:dessert|lunch|dinner|food|snacks|drinks|bottles|tickets?)\s+for\s+([^.\n;,]+?)(?:\.|$|;)/gi;
+      const forRegex = /\b(?:dessert|lunch|dinner|food|snacks|drinks|bottles|tickets?)\s+for\s+([^.\n;,]+?)(?:\.|$|;)/gi;
       while ((match = forRegex.exec(text)) !== null) {
+        processNameList(match[1]);
+      }
+
+      // 10b. With: "with <Name1>", "with <Name1> and <Name2>", "along with <Name1>"
+      const withRegex = /\b(?:along\s+with|with)\s+([A-Za-z]+(?:\s+and\s+[A-Za-z]+)?)\b/gi;
+      while ((match = withRegex.exec(text)) !== null) {
         processNameList(match[1]);
       }
 

@@ -52,6 +52,101 @@ test('discoverNames: Safe edge cases return empty array without crashing', () =>
   assert.deepEqual(Parser.discoverNames('Total bill was 500 paid in cash on Sunday.'), []);
 });
 
+test('Section 3 Spec: Pasting complete 6-person Digha story detects all 6 participants automatically', () => {
+  const story = "Six of us went to Digha. Anuj paid ₹3,600 for the hotel, shared among Anuj, Priyasi, Plaban, Arkadeep and Rohan. Sneha paid ₹1,200 for the boat ride, shared among Anuj, Priyasi, Rohan and Sneha.";
+  const names = Parser.discoverNames(story);
+
+  assert.deepEqual([...names].sort(), ['Anuj', 'Arkadeep', 'Plaban', 'Priyasi', 'Rohan', 'Sneha'].sort());
+  assert.ok(!names.includes('Digha'), 'Digha must not be a participant');
+  assert.ok(!names.includes('Six'), 'Six must not be a participant');
+  assert.ok(!names.includes('Hotel'), 'Hotel must not be a participant');
+  assert.ok(!names.includes('Boat'), 'Boat must not be a participant');
+  assert.ok(!names.includes('Ride'), 'Ride must not be a participant');
+  assert.ok(!names.includes('Us'), 'Us must not be a participant');
+});
+
+test('Section 6 Spec: Ordinary nouns, places, and foods are never mistaken for people', () => {
+  const story = "We went to Digha and ate seafood near the beach.";
+  const names = Parser.discoverNames(story);
+  assert.deepEqual(names, []);
+});
+
+test('Section 4 & 5 Spec: Manually added squad members are preserved across parsing cycles', () => {
+  // Simulating squad state
+  const squad = [
+    { name: 'Kabir', upi: 'kabir@upi', source: 'manual' } // Manually added member not in story
+  ];
+  const story = "Anuj paid 500 for lunch with Priyasi.";
+  const detected = Parser.discoverNames(story, squad.map(s => s.name));
+
+  // Reconcile
+  detected.forEach(name => {
+    if (!squad.some(m => m.name.toLowerCase() === name.toLowerCase())) {
+      squad.push({ name, upi: '', source: 'auto' });
+    }
+  });
+
+  const names = squad.map(m => m.name);
+  assert.ok(names.includes('Kabir'), 'Manually added Kabir must be preserved');
+  assert.ok(names.includes('Anuj'), 'Auto-detected Anuj must be added');
+  assert.ok(names.includes('Priyasi'), 'Auto-detected Priyasi must be added');
+});
+
+test('Section 5 Spec: Intentionally removed participant is not re-added on subsequent typing cycle', () => {
+  const removedMembers = new Set(['rohan']);
+  const squad = [
+    { name: 'Anuj', upi: '' }
+  ];
+  const story = "Anuj paid 1000 for dinner. Rohan paid 200 for ice cream.";
+  const detected = Parser.discoverNames(story);
+
+  detected.forEach(name => {
+    const lower = name.toLowerCase();
+    if (removedMembers.has(lower)) return; // Skipped intentionally
+    if (!squad.some(m => m.name.toLowerCase() === lower)) {
+      squad.push({ name, upi: '' });
+    }
+  });
+
+  const names = squad.map(m => m.name);
+  assert.ok(names.includes('Anuj'));
+  assert.ok(!names.includes('Rohan'), 'Rohan was intentionally removed and must not be re-added');
+});
+
+test('Section 2 Spec: Monotonic sequence prevents older asynchronous results from overwriting newer text', () => {
+  let storySeq = 0;
+  let activeSquad = ['Initial'];
+
+  const triggerAsyncParsing = (text, seq) => {
+    return new Promise(resolve => {
+      // Simulate random network/computation latency
+      const delay = seq === 1 ? 50 : 10;
+      setTimeout(() => {
+        if (seq < storySeq) {
+          resolve({ ignored: true, seq });
+          return;
+        }
+        activeSquad = Parser.discoverNames(text);
+        resolve({ ignored: false, seq, squad: activeSquad });
+      }, delay);
+    });
+  };
+
+  // Launch Request 1 (seq 1 - takes longer)
+  storySeq = 1;
+  const p1 = triggerAsyncParsing('Anuj paid 500', 1);
+
+  // User immediately types more, launching Request 2 (seq 2 - faster)
+  storySeq = 2;
+  const p2 = triggerAsyncParsing('Anuj paid 500. Priyasi paid 300', 2);
+
+  return Promise.all([p1, p2]).then(([r1, r2]) => {
+    assert.equal(r1.ignored, true, 'Older request 1 must be discarded');
+    assert.equal(r2.ignored, false, 'Newer request 2 must be accepted');
+    assert.deepEqual([...activeSquad].sort(), ['Anuj', 'Priyasi'].sort());
+  });
+});
+
 test('Workflow Invariant: Auto-detected squad members separate membership from expense allocations', () => {
   const story = 'Anuj paid 1000 for dinner for all of us except Rohan. Rohan paid 200 for ice cream.';
   const detectedSquad = Parser.discoverNames(story);

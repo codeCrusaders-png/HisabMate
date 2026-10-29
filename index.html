@@ -462,7 +462,7 @@
             <span>Step 2: Add Squad Members</span>
             <span id="squad-count-badge" class="text-xs font-mono px-2 py-0.5 rounded-full bg-surfaceLight border border-surfaceBorder text-amberGlow">0</span>
           </h2>
-          <span class="text-xs text-slate-400 hidden sm:inline">• Auto-detected from story & manual add</span>
+          <span id="squad-sync-status" class="text-xs text-slate-400 hidden sm:inline">• Auto-detected from story & manual add</span>
         </div>
 
         <div class="flex items-center gap-2">
@@ -1070,6 +1070,8 @@
         this.STORAGE_KEY_HISTORY = 'HISABMATE_OUTINGS_HISTORY_V2';
         this.STORAGE_KEY_LEGACY = 'HISABMATE_ACTIVE_OUTING_V1';
         this.removedMembers = new Set();
+        this.storyDetectionTimer = null;
+        this.storyDetectionSeq = 0;
 
         // Active Outing State
         this.outing = {
@@ -1234,6 +1236,7 @@
         this.saveState();
         this.renderSquadChips();
         this.updateReviewSection();
+        this.updateSquadStatusText();
       }
 
       removeSquadMember(index) {
@@ -1264,6 +1267,7 @@
           this.renderSquadChips();
           this.showToast(`Removed ${removed.name} from squad`, 'info');
           this.calculateSettlements(false);
+          this.updateSquadStatusText();
         }
       }
 
@@ -1288,28 +1292,75 @@
           this.saveState();
           this.renderSquadChips();
           this.calculateSettlements(false);
+          this.updateSquadStatusText();
         }
       }
 
       // ========================================
       // NLP PARSER & REVIEW-BEFORE-COMMIT
       // ========================================
+      scheduleSquadDetection(delay = 350, notify = false) {
+        clearTimeout(this.storyDetectionTimer);
+        const statusEl = document.getElementById('squad-sync-status');
+        if (statusEl && delay > 100) {
+          statusEl.innerHTML = '<span class="text-amber-400 text-xs font-medium">⚡ Detecting people...</span>';
+        }
+        const currentSeq = ++this.storyDetectionSeq;
+        this.storyDetectionTimer = setTimeout(() => {
+          if (currentSeq < this.storyDetectionSeq) return;
+          this.syncSquadFromStory(notify);
+        }, delay);
+      }
+
+      flushSquadDetection(notify = false) {
+        clearTimeout(this.storyDetectionTimer);
+        this.storyDetectionSeq++;
+        this.syncSquadFromStory(notify);
+      }
+
+      updateSquadStatusText(detectedCount) {
+        const statusEl = document.getElementById('squad-sync-status');
+        if (!statusEl) return;
+        const squadLen = (this.outing.squad || []).length;
+        if (typeof detectedCount === 'number' && detectedCount > 0) {
+          statusEl.innerHTML = `<span class="text-emeraldMint text-xs font-medium">✓ ${detectedCount} detected from story • ${squadLen} total</span>`;
+        } else if (squadLen > 0) {
+          statusEl.innerHTML = `<span class="text-slate-400 text-xs font-normal">• ${squadLen} squad member${squadLen > 1 ? 's' : ''} registered</span>`;
+        } else {
+          statusEl.innerHTML = `<span class="text-slate-400 text-xs font-normal">• Auto-detected from story &amp; manual add</span>`;
+        }
+      }
+
       syncSquadFromStory(notify = false) {
         const story = (this.outing && this.outing.story) ? this.outing.story : '';
-        if (!story.trim()) return;
+        if (!story.trim()) {
+          this.updateSquadStatusText();
+          return;
+        }
         if (!this.removedMembers) this.removedMembers = new Set();
         const currentSquadNames = (this.outing.squad || []).map(s => s.name);
-        const detected = Parser.discoverNames(story, currentSquadNames);
+        
+        let detected = [];
+        try {
+          detected = Parser.discoverNames(story, currentSquadNames);
+        } catch (e) {
+          console.warn('Parser.discoverNames error (preserved existing squad):', e);
+          return;
+        }
+
         let addedCount = 0;
         detected.forEach(name => {
           const lower = name.toLowerCase();
+          // If user intentionally removed this person, do not re-add
           if (this.removedMembers.has(lower)) return;
-          const exists = this.outing.squad.some(m => m.name.toLowerCase() === lower);
-          if (!exists) {
-            this.outing.squad.push({ name, upi: '' });
+          
+          const existing = this.outing.squad.find(m => m.name.toLowerCase() === lower);
+          if (!existing) {
+            this.outing.squad.push({ name, upi: '', source: 'auto' });
             addedCount++;
           }
         });
+
         if (addedCount > 0) {
           this.saveState();
           this.renderSquadChips();
@@ -1317,16 +1368,14 @@
             this.showToast(`Auto-detected ${addedCount} squad member${addedCount > 1 ? 's' : ''} from story! 👥`, 'info');
           }
         }
+        this.updateSquadStatusText(detected.length);
       }
 
       triggerReviewAndParse(scroll = true) {
+        // Ensure any pending debounced squad detection is immediately evaluated
+        this.flushSquadDetection(false);
+
         const story = this.outing.story || '';
-
-        // Proactively detect squad members from narrative if squad is empty
-        if (this.outing.squad.length === 0 && story.trim()) {
-          this.syncSquadFromStory(false);
-        }
-
         const squadNames = this.outing.squad.map(s => s.name);
 
         if (!story.trim() && this.outing.expenses.length === 0) {
@@ -1481,6 +1530,7 @@
         this.renderSettlementProgress();
         this.renderSettlementGrid();
         this.updateHistoryCountBadge();
+        this.updateSquadStatusText();
       }
 
       renderMetadata() {
@@ -3297,18 +3347,27 @@
         const clearSquadBtn = document.getElementById('btn-clear-squad');
         if (clearSquadBtn) clearSquadBtn.addEventListener('click', () => this.clearSquad());
 
-        // Story Input
+        // Story Input (Debounced typing & Instant paste detection)
         const storyInput = document.getElementById('story-input');
         if (storyInput) {
           storyInput.addEventListener('input', (e) => {
             this.outing.story = e.target.value;
             this.updateStoryCounters();
-            this.syncSquadFromStory(false);
             this.saveState();
+            this.scheduleSquadDetection(350);
+          });
+
+          storyInput.addEventListener('paste', () => {
+            setTimeout(() => {
+              this.outing.story = storyInput.value;
+              this.updateStoryCounters();
+              this.saveState();
+              this.scheduleSquadDetection(50);
+            }, 20);
           });
 
           storyInput.addEventListener('blur', () => {
-            this.syncSquadFromStory(false);
+            this.flushSquadDetection(false);
           });
 
           storyInput.addEventListener('keydown', (e) => {
@@ -3353,6 +3412,7 @@
             if (input) input.value = '';
             this.updateStoryCounters();
             this.saveState();
+            this.updateSquadStatusText();
           });
         }
 
